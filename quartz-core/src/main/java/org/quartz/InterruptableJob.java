@@ -58,7 +58,7 @@ package org.quartz;
  * </p>
  * 
  * <p>
- * See Example 7 (org.quartz.examples.example7.DumbInterruptableJob) for a simple
+ * See Example 7 (org.quartz.org.quartz.examples.example7.DumbInterruptableJob) for a simple
  * implementation demonstration.
  * </p>
  * @see Job
