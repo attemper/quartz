@@ -135,7 +135,6 @@ public class DeleteNonExistsJobTest {
 
     public static class TestJob implements Job {
 
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
             LOG.info("Job is executing {}", context);
         }

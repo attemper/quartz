@@ -227,7 +227,6 @@ public final class JdbcQuartzDerbyUtilities {
             // nothing to do
         }
 
-		@Override
 		public void initialize() throws SQLException {
 			// nothing to do
 		}

@@ -26,7 +26,6 @@ public class JobDetailTest extends TestCase {
 
     @PersistJobDataAfterExecution
     public class SomePersistentJob implements Job {
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
        }
     }
@@ -36,7 +35,6 @@ public class JobDetailTest extends TestCase {
 
     @DisallowConcurrentExecution
     public class SomeNonConcurrentJob implements Job {
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
         }
     }
@@ -47,7 +45,6 @@ public class JobDetailTest extends TestCase {
     @DisallowConcurrentExecution
     @PersistJobDataAfterExecution
     public class SomeNonConcurrentPersistentJob implements Job {
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
         }
     }
@@ -56,7 +53,6 @@ public class JobDetailTest extends TestCase {
     }
 
     public class SomeStatefulJob implements StatefulJob {
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
         }
     }

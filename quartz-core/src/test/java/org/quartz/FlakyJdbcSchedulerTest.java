@@ -157,7 +157,6 @@ public class FlakyJdbcSchedulerTest extends AbstractSchedulerTest {
             JdbcQuartzTestUtilities.createDatabase(delegateName);
         }
 
-        @Override
         public Connection getConnection() throws SQLException {
             if (Thread.currentThread() == safeThread) {
                 return DBConnectionManager.getInstance().getConnection(delegateName);
@@ -168,14 +167,12 @@ public class FlakyJdbcSchedulerTest extends AbstractSchedulerTest {
             }
         }
 
-        @Override
         public void shutdown() throws SQLException {
             DBConnectionManager.getInstance().shutdown(delegateName);
             JdbcQuartzTestUtilities.destroyDatabase(delegateName);
             JdbcQuartzTestUtilities.shutdownDatabase();
         }
 
-        @Override
         public void initialize() throws SQLException {
             //no-op
         }
@@ -189,7 +186,6 @@ public class FlakyJdbcSchedulerTest extends AbstractSchedulerTest {
             this.delegate = delegate;
         }
         
-        @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if ("commit".equals(method.getName())) {
                 preCommitFailure();

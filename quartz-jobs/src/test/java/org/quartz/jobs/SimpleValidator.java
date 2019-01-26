@@ -9,7 +9,6 @@ import org.subethamail.smtp.auth.UsernamePasswordValidator;
 class SimpleValidator implements UsernamePasswordValidator {
     public LoginFailedException error;
 
-    @Override
     public void login(String username, String password)
             throws LoginFailedException {
         System.out.println("UsernamePasswordValidator: login username '"

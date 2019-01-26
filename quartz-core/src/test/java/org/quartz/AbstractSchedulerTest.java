@@ -494,7 +494,6 @@ public abstract class AbstractSchedulerTest {
     }
     
     public static class UncleanShutdownJob implements Job {
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
             try {
                 SchedulerContext schedulerContext = context.getScheduler().getContext();

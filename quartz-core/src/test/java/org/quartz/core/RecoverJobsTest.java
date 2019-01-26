@@ -106,7 +106,6 @@ public class RecoverJobsTest {
             factory.createScheduler(new SimpleThreadPool(1, Thread.NORM_PRIORITY), jobStore);
             Scheduler recovery = factory.getScheduler();
             recovery.getListenerManager().addJobListener(new JobListenerSupport() {
-                @Override
                 public String getName() {
                     return RecoverJobsTest.class.getSimpleName();
                 }
@@ -138,7 +137,6 @@ public class RecoverJobsTest {
         private static Logger _log = LoggerFactory.getLogger(RecoverJobsTestJob.class);
         static boolean runForever = true;
 
-        @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
             long now = System.currentTimeMillis();
             int tic = 0;

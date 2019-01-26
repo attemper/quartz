@@ -67,7 +67,6 @@ public class QTZ385Test {
       realJobStore.setInstanceName("testShutdownOrdering");
 
       JobStore evilJobStore = (JobStore) Proxy.newProxyInstance(JobStore.class.getClassLoader(), new Class[] {JobStore.class}, new InvocationHandler() {
-        @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
           if (TRIGGERS_FIRED.equals(method)) {
             Object result = method.invoke(realJobStore, args);
@@ -109,7 +108,6 @@ public class QTZ385Test {
       try {
         recovery.getListenerManager().addJobListener(new JobListenerSupport() {
 
-          @Override
           public String getName() {
             return QTZ385Test.class.getSimpleName();
           }
