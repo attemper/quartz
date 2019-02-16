@@ -617,6 +617,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
         this.doubleCheckLockMisfireHandler = doubleCheckLockMisfireHandler;
     }
 
+    @Override
     public long getAcquireRetryDelay(int failureCount) {
         return dbRetryInterval;
     }
@@ -2980,6 +2981,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                     }
                 },
                 new TransactionValidator<List<TriggerFiredResult>>() {
+                    @Override
                     public Boolean validate(Connection conn, List<TriggerFiredResult> result) throws JobPersistenceException {
                         try {
                             List<FiredTriggerRecord> acquired = getDelegate().selectInstancesFiredTriggerRecords(conn, getInstanceId());
@@ -3850,6 +3852,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
             } catch (JobPersistenceException e) {
                 rollbackConnection(conn);
                 if (txValidator == null || !retryExecuteInNonManagedTXLock(lockName, new TransactionCallback<Boolean>() {
+                    @Override
                     public Boolean execute(Connection conn) throws JobPersistenceException {
                         return txValidator.validate(conn, result);
                     }

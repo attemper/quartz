@@ -1686,6 +1686,7 @@ public class RAMJobStore implements JobStore {
         }
     }
 
+    @Override
     public long getAcquireRetryDelay(int failureCount) {
         return 20;
     }
