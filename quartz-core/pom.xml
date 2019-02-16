@@ -22,13 +22,22 @@
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
       <version>${c3p0.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP-java6</artifactId>
       <version>${hikaricp.version}</version>
+      <optional>true</optional>
     </dependency>
+    
+    <dependency>
+	    <groupId>com.alibaba</groupId>
+	    <artifactId>druid</artifactId>
+	    <version>${druid.version}</version>
+	    <optional>true</optional>
+	</dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>

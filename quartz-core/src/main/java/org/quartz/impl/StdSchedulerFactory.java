@@ -63,7 +63,6 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.security.AccessControlException;
-import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Properties;
@@ -1014,12 +1013,15 @@ public class StdSchedulerFactory implements SchedulerFactory {
                         throw initException;
                     }
                     // we load even these "core" providers by class name in order to avoid a static dependency on
-                    // the c3p0 and hikaricp libraries
+                    // the c3p0/hikaricp/druid libraries，the default is hikari
                     if(poolingProvider != null && poolingProvider.equals(PoolingConnectionProvider.POOLING_PROVIDER_HIKARICP)) {
                         cpClass = "org.quartz.utils.HikariCpPoolingConnectionProvider";
-                    }
-                    else {
+                    } else if(poolingProvider != null && poolingProvider.equals(PoolingConnectionProvider.POOLING_PROVIDER_DRUID)) {
+                        cpClass = "org.quartz.utils.DruidPoolingConnectionProvider";
+                    } else if(poolingProvider != null && poolingProvider.equals(PoolingConnectionProvider.POOLING_PROVIDER_C3P0)) {
                         cpClass = "org.quartz.utils.C3p0PoolingConnectionProvider";
+                    } else {
+                        cpClass = "org.quartz.utils.HikariCpPoolingConnectionProvider";
                     }
                     log.info("Using ConnectionProvider class '" + cpClass + "' for data source '" + dsNames[i] + "'");
 

@@ -17,8 +17,9 @@
 
 package org.quartz.utils;
 
-import com.zaxxer.hikari.HikariDataSource;
 import org.quartz.SchedulerException;
+
+import com.alibaba.druid.pool.DruidDataSource;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -31,15 +32,15 @@ import java.util.Properties;
  * </p>
  *
  * <p>
- * This class uses HikariCP (https://brettwooldridge.github.io/HikariCP/) as
+ * This class uses Druid (https://github.com/alibaba/druid) as
  * the underlying pool implementation.</p>
  *
  * @see DBConnectionManager
  * @see ConnectionProvider
  *
- * @author Ludovic Orban
+ * @author ldang
  */
-public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvider {
+public class DruidPoolingConnectionProvider implements PoolingConnectionProvider {
 
     /*
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,7 +58,7 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
 
-    private HikariDataSource datasource;
+    private DruidDataSource datasource;
 
     /*
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,12 +68,12 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
 
-    public HikariCpPoolingConnectionProvider(String dbDriver, String dbURL,
-                                             String dbUser, String dbPassword, int maxConnections,
+    public DruidPoolingConnectionProvider(String dbDriver, String dbURL,
+                                             String dbUser, String dbPassword, int maxActive,
                                              String dbValidationQuery) throws SQLException, SchedulerException {
         initialize(
                 dbDriver, dbURL, dbUser, dbPassword,
-                maxConnections, dbValidationQuery);
+                maxActive, dbValidationQuery);
     }
 
     /**
@@ -94,7 +95,7 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
      * @param config
      *            configuration properties
      */
-    public HikariCpPoolingConnectionProvider(Properties config) throws SchedulerException, SQLException {
+    public DruidPoolingConnectionProvider(Properties config) throws SchedulerException, SQLException {
         PropertiesParser cfg = new PropertiesParser(config);
         initialize(
                 cfg.getStringProperty(DB_DRIVER),
@@ -114,7 +115,7 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
      */
 
     /**
-     * Create the underlying Hikari ComboPooledDataSource with the 
+     * Create the underlying Druid ComboPooledDataSource with the 
      * default supported properties.
      * @throws SchedulerException
      */
@@ -123,7 +124,7 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
             String dbURL,
             String dbUser,
             String dbPassword,
-            int maxConnections,
+            int maxActive,
             String dbValidationQuery) throws SQLException, SchedulerException {
         if (dbURL == null) {
             throw new SQLException(
@@ -136,45 +137,49 @@ public class HikariCpPoolingConnectionProvider implements PoolingConnectionProvi
                             "DB driver class name cannot be null!");
         }
 
-        if (maxConnections < 0) {
+        if (maxActive < 0) {
             throw new SQLException(
                     "DBPool '" + dbURL + "' could not be created: " +
                             "Max connections must be greater than zero!");
         }
 
 
-        datasource = new HikariDataSource();
+        datasource = new DruidDataSource();
         datasource.setDriverClassName(dbDriver);
-        datasource.setJdbcUrl(dbURL);
+        datasource.setUrl(dbURL);
         datasource.setUsername(dbUser);
         datasource.setPassword(dbPassword);
-        datasource.setMaximumPoolSize(maxConnections);
+        datasource.setMaxActive(maxActive);
 
         if (dbValidationQuery != null) {
-            datasource.setConnectionTestQuery(dbValidationQuery);
+            datasource.setValidationQuery(dbValidationQuery);
         }
     }
 
     /**
-     * Get the HikariCP HikariDataSource created during initialization.
+     * Get the Druid DruidDataSource created during initialization.
      *
      * <p>
      * This can be used to set additional data source properties in a 
      * subclass's constructor.
      * </p>
      */
-    public HikariDataSource getDataSource() {
+    @Override
+    public DruidDataSource getDataSource() {
         return datasource;
     }
 
+    @Override
     public Connection getConnection() throws SQLException {
         return datasource.getConnection();
     }
 
+    @Override
     public void shutdown() throws SQLException {
         datasource.close();
     }
 
+    @Override
     public void initialize() throws SQLException {
         // do nothing, already initialized during constructor call
     }

@@ -42,6 +42,9 @@ public interface PoolingConnectionProvider extends ConnectionProvider {
 
     /** The Hikari pooling provider. */
     String POOLING_PROVIDER_HIKARICP = "hikaricp";
+    
+    /** The Druid pooling provider. */
+    String POOLING_PROVIDER_DRUID = "druid";
 
     /** The JDBC database driver. */
     String DB_DRIVER = "driver";
