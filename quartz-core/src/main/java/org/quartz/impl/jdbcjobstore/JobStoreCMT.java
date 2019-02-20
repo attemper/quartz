@@ -222,9 +222,9 @@ public class JobStoreCMT extends JobStoreSupport {
      * @see JobStoreSupport#getConnection()
      */
     @Override
-    protected Object executeInLock(
+    protected <T> T executeInLock(
             String lockName, 
-            TransactionCallback txCallback) throws JobPersistenceException {
+            TransactionCallback<T> txCallback) throws JobPersistenceException {
         boolean transOwner = false;
         Connection conn = null;
         try {

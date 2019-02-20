@@ -26,12 +26,9 @@ import static org.quartz.TriggerKey.triggerKey;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.net.URLDecoder;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +42,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import javax.xml.XMLConstants;
+import javax.xml.bind.DatatypeConverter;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -55,8 +53,20 @@ import javax.xml.xpath.XPathException;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import org.quartz.*;
+import org.quartz.CalendarIntervalScheduleBuilder;
+import org.quartz.CronScheduleBuilder;
 import org.quartz.DateBuilder.IntervalUnit;
+import org.quartz.Job;
+import org.quartz.JobDetail;
+import org.quartz.JobKey;
+import org.quartz.JobPersistenceException;
+import org.quartz.ObjectAlreadyExistsException;
+import org.quartz.ScheduleBuilder;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.SimpleScheduleBuilder;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.spi.ClassLoadHelper;
 import org.quartz.spi.MutableTrigger;
@@ -69,7 +79,6 @@ import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
-import javax.xml.bind.DatatypeConverter;
 
 
 /**
@@ -487,7 +496,6 @@ public class XMLSchedulingDataProcessor implements ErrorHandler {
         maybeThrowValidationException();
     }
     
-    @SuppressWarnings("ConstantConditions")
     protected void process(InputSource is) throws SAXException, IOException, ParseException, XPathException, ClassNotFoundException {
         
         // load the document 
@@ -967,7 +975,6 @@ public class XMLSchedulingDataProcessor implements ErrorHandler {
      *              if the Job or Trigger cannot be added to the Scheduler, or
      *              there is an internal Scheduler error.
      */
-    @SuppressWarnings("ConstantConditions")
     protected void scheduleJobs(Scheduler sched)
         throws SchedulerException {
         

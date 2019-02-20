@@ -24,13 +24,12 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.quartz.Calendar;
@@ -41,11 +40,10 @@ import org.quartz.JobKey;
 import org.quartz.JobPersistenceException;
 import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Trigger;
-import org.quartz.TriggerKey;
 import org.quartz.Trigger.CompletedExecutionInstruction;
 import org.quartz.Trigger.TriggerState;
 import org.quartz.Trigger.TriggerTimeComparator;
-import org.quartz.impl.JobDetailImpl;
+import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.impl.matchers.StringMatcher;
 import org.quartz.spi.ClassLoadHelper;
@@ -56,8 +54,6 @@ import org.quartz.spi.TriggerFiredBundle;
 import org.quartz.spi.TriggerFiredResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.quartz.impl.matchers.EverythingMatcher.allTriggers;
 
 /**
  * <p>
@@ -178,7 +174,6 @@ public class RAMJobStore implements JobStore {
      * 
      * @param misfireThreshold the new misfire threshold
      */
-    @SuppressWarnings("UnusedDeclaration")
     public void setMisfireThreshold(long misfireThreshold) {
         if (misfireThreshold < 1) {
             throw new IllegalArgumentException("Misfire threshold must be larger than 0");
@@ -1701,7 +1696,6 @@ public class RAMJobStore implements JobStore {
         }
     }
     
-    @SuppressWarnings("UnusedDeclaration")
     protected String peekTriggers() {
 
         StringBuilder str = new StringBuilder();
@@ -1826,7 +1820,6 @@ class TriggerWrapper {
 
     public static final int STATE_ACQUIRED = 1;
 
-    @SuppressWarnings("UnusedDeclaration")
     public static final int STATE_EXECUTING = 2;
 
     public static final int STATE_COMPLETE = 3;

@@ -87,9 +87,9 @@ public class JobStoreTX extends JobStoreSupport {
      * @see JobStoreSupport#getConnection()
      */
     @Override
-    protected Object executeInLock(
+    protected <T> T executeInLock(
             String lockName, 
-            TransactionCallback txCallback) throws JobPersistenceException {
+            TransactionCallback<T> txCallback) throws JobPersistenceException {
         return executeInNonManagedTXLock(lockName, txCallback, null);
     }
 }

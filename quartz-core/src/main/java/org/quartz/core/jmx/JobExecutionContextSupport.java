@@ -34,7 +34,7 @@ public class JobExecutionContextSupport {
             "jobGroup", "jobDataMap", "calendarName", "recovering",
             "refireCount", "fireTime", "scheduledFireTime", "previousFireTime",
             "nextFireTime", "jobRunTime", "fireInstanceId" };
-    private static final OpenType[] ITEM_TYPES = new OpenType[] { STRING,
+    private static final OpenType<?>[] ITEM_TYPES = new OpenType[] { STRING,
             STRING, STRING, STRING, STRING, JobDataMapSupport.TABULAR_TYPE,
             STRING, BOOLEAN, INTEGER, DATE, DATE, DATE, DATE, LONG, STRING };
     private static final CompositeType COMPOSITE_TYPE;

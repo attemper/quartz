@@ -16,8 +16,6 @@
  */
 package org.quartz.impl;
 
-import java.text.ParseException;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -41,11 +39,10 @@ import org.quartz.SchedulerContext;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerMetaData;
 import org.quartz.Trigger;
+import org.quartz.Trigger.TriggerState;
 import org.quartz.TriggerKey;
 import org.quartz.UnableToInterruptJobException;
-import org.quartz.Trigger.TriggerState;
 import org.quartz.core.jmx.JobDetailSupport;
-import org.quartz.core.jmx.TriggerSupport;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.impl.matchers.StringMatcher;
 import org.quartz.spi.JobFactory;
@@ -329,7 +326,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
      * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
      * </p>
      */
-    @SuppressWarnings("unchecked")
     public List<JobExecutionContext> getCurrentlyExecutingJobs() throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
@@ -733,7 +729,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
      * instance.
      * </p>
      */
-    @SuppressWarnings("unchecked")
     public List<Trigger> getTriggersOfJob(JobKey jobKey) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
@@ -757,7 +752,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
      * instance.
      * </p>
      */
-    @SuppressWarnings("unchecked")
     public Set<TriggerKey> getTriggerKeys(GroupMatcher<TriggerKey> matcher) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }

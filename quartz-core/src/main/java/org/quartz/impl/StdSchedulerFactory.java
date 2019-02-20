@@ -1028,7 +1028,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
                     try {
                         ConnectionProvider cp = null;
                         try {
-                            Constructor constructor = loadHelper.loadClass(cpClass).getConstructor(Properties.class);
+                            Constructor<?> constructor = loadHelper.loadClass(cpClass).getConstructor(Properties.class);
                             cp = (ConnectionProvider) constructor.newInstance(pp.getUnderlyingProperties());
                         } catch (Exception e) {
                             initException = new SchedulerException("ConnectionProvider class '" + cpClass
