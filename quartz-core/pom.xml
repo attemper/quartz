@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.quartz-scheduler</groupId>
-    <artifactId>quartz-parent</artifactId>
+    <artifactId>quartz</artifactId>
     <version>3.0.0</version>
   </parent>
 
@@ -12,44 +12,35 @@
   <artifactId>quartz-core</artifactId>
   <name>quartz-core</name>
 
-  <properties>
-	<derby-version>10.8.2.2</derby-version>
-  </properties>
-
   <dependencies>
     <!--Compile scope. If you add something to compile scope, you have to do the same thing in packaging/pom.xml -->
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
-      <version>${c3p0.version}</version>
       <optional>true</optional>
     </dependency>
 
     <dependency>
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP-java6</artifactId>
-      <version>${hikaricp.version}</version>
       <optional>true</optional>
     </dependency>
     
     <dependency>
 	    <groupId>com.alibaba</groupId>
 	    <artifactId>druid</artifactId>
-	    <version>${druid.version}</version>
 	    <optional>true</optional>
 	</dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
     </dependency>
 
     <!-- provided scope -->
     <dependency>
       <groupId>org.apache.openejb</groupId>
       <artifactId>javaee-api</artifactId>
-      <version>5.0-2</version>
       <scope>provided</scope>
     </dependency>
 
@@ -57,55 +48,46 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <version>${slf4j.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>    
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-library</artifactId>
-      <version>1.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-all</artifactId>
-      <version>1.9.5</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit-dep</artifactId>
-      <version>4.8.2</version>
       <scope>test</scope>
     </dependency>    
     <dependency>
       <groupId>asm</groupId>
       <artifactId>asm</artifactId>
-      <version>3.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
-      <version>${derby-version}</version>
       <scope>test</scope>
     </dependency>
 	<dependency>
 		<groupId>org.apache.derby</groupId>
 		<artifactId>derbynet</artifactId>
-		<version>${derby-version}</version>
 		<scope>test</scope>
 	</dependency>
 	<dependency>
 		<groupId>org.apache.derby</groupId>
 		<artifactId>derbyclient</artifactId>
-		<version>${derby-version}</version>
 		<scope>test</scope>
 	</dependency>
 

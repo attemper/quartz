@@ -1,16 +1,18 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.quartz-scheduler</groupId>
-  <artifactId>quartz-parent</artifactId>
+  <artifactId>quartz</artifactId>
   <version>3.0.0</version>
-  <name>quartz-parent</name>
+  <name>quartz</name>
   <packaging>pom</packaging>
-  
+
   <description>Quartz is a full-featured, open source job scheduling system that
     can be integrated with, or used along side virtually any J2EE or
-    J2SE application</description>
+    J2SE application
+  </description>
   <url>http://www.quartz-scheduler.org</url>
   <organization>
     <name>Terracotta, Inc.</name>
@@ -22,34 +24,34 @@
       <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
       <distribution>repo</distribution>
     </license>
-  </licenses>  
+  </licenses>
   <scm>
     <connection>scm:git:git@github.com:quartz-scheduler/quartz.git</connection>
     <developerConnection>scm:git:git@github.com:quartz-scheduler/quartz.git</developerConnection>
-    <tag />
+    <tag/>
     <url>https://github.com/quartz-scheduler/quartz</url>
   </scm>
   <issueManagement>
     <system>Terracotta's JIRA</system>
     <url>https://github.com/quartz-scheduler/quartz/issues</url>
-  </issueManagement>  
+  </issueManagement>
   <developers>
     <developer>
-    <id>jhouserizer</id>
-    <name>James House</name>
-    <email>jhouse@terracotta.org</email>
-    <organization>Terracotta</organization>
-    <organizationUrl>http://www.terracotta.org</organizationUrl>
-    <roles>
-      <role>Primary Developer</role>
-    </roles>
-    <timezone>-6</timezone>
+      <id>jhouserizer</id>
+      <name>James House</name>
+      <email>jhouse@terracotta.org</email>
+      <organization>Terracotta</organization>
+      <organizationUrl>http://www.terracotta.org</organizationUrl>
+      <roles>
+        <role>Primary Developer</role>
+      </roles>
+      <timezone>-6</timezone>
     </developer>
-  </developers>  
+  </developers>
   <modules>
     <module>quartz-checkstyle</module>
     <module>quartz-core</module>
-	<module>quartz-jboss</module>
+    <module>quartz-jboss</module>
     <module>quartz-stubs</module>
     <module>quartz-oracle</module>
     <module>quartz-weblogic</module>
@@ -67,12 +69,28 @@
     <skipDeploy>false</skipDeploy>
     <skipJavadoc>false</skipJavadoc>
     <skipCheckstyle>false</skipCheckstyle>
-    
-    <slf4j.version>1.7.7</slf4j.version>
-    <c3p0.version>0.9.5.2</c3p0.version>
+
     <hikaricp.version>2.3.13</hikaricp.version>
     <druid.version>1.1.13</druid.version>
+    <c3p0.version>0.9.5.2</c3p0.version>
+
+    <commons-io.version>2.4</commons-io.version>
+
+    <derby-version>10.8.2.2</derby-version>
+    <javaee-api.version>6.0-5</javaee-api.version>
+    <hamcrest-library.version>1.2</hamcrest-library.version>
+    <mockito-all.version>1.9.5</mockito-all.version>
+    <asm.version>3.2</asm.version>
+    <jboss.version>4.0.2</jboss.version>
+    <mail.version>1.4.7</mail.version>
+    <subethasmtp.version>3.1.7</subethasmtp.version>
+    <terracotta-toolkit-api.version>2.5</terracotta-toolkit-api.version>
+    <terracotta-toolkit-api-internal.version>1.12</terracotta-toolkit-api-internal.version>
+
+    <slf4j.version>1.7.7</slf4j.version>
     <log4j.version>1.2.16</log4j.version>
+    <junit-dep.version>4.10</junit-dep.version>
+
     <maven-forge-plugin.version>1.1.9</maven-forge-plugin.version>
     <gmaven-plugin.version>1.4</gmaven-plugin.version>
     <checkstyle-suppressions-file>suppressions.xml</checkstyle-suppressions-file>
@@ -80,10 +98,162 @@
     <checkstyle-header-file>header.txt</checkstyle-header-file>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <!--Compile scope. If you add something to compile scope, you have to do the same thing in packaging/pom.xml -->
+      <dependency>
+        <groupId>com.zaxxer</groupId>
+        <artifactId>HikariCP-java6</artifactId>
+        <version>${hikaricp.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.alibaba</groupId>
+        <artifactId>druid</artifactId>
+        <version>${druid.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.mchange</groupId>
+        <artifactId>c3p0</artifactId>
+        <version>${c3p0.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+
+      <!-- provided scope -->
+      <dependency>
+        <groupId>org.apache.openejb</groupId>
+        <artifactId>javaee-api</artifactId>
+        <version>${javaee-api.version}</version>
+      </dependency>
+
+      <!-- test dependencies -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-log4j12</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.hamcrest</groupId>
+        <artifactId>hamcrest-library</artifactId>
+        <version>${hamcrest-library.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-all</artifactId>
+        <version>${mockito-all.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit-dep</artifactId>
+        <version>${junit-dep.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>asm</groupId>
+        <artifactId>asm</artifactId>
+        <version>${asm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.derby</groupId>
+        <artifactId>derby</artifactId>
+        <version>${derby-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.derby</groupId>
+        <artifactId>derbynet</artifactId>
+        <version>${derby-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.derby</groupId>
+        <artifactId>derbyclient</artifactId>
+        <version>${derby-version}</version>
+      </dependency>
+
+      <!-- jboss -->
+      <dependency>
+        <groupId>jboss</groupId>
+        <artifactId>jboss-common</artifactId>
+        <version>${jboss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>jboss</groupId>
+        <artifactId>jboss-minimal</artifactId>
+        <version>${jboss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>jboss</groupId>
+        <artifactId>jboss-system</artifactId>
+        <version>${jboss.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>jboss</groupId>
+        <artifactId>jboss-jmx</artifactId>
+        <version>${jboss.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>javax.mail</groupId>
+        <artifactId>mail</artifactId>
+        <version>${mail.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.subethamail</groupId>
+        <artifactId>subethasmtp</artifactId>
+        <version>${subethasmtp.version}</version>
+      </dependency>
+
+      <!-- terracotta -->
+      <dependency>
+        <groupId>org.terracotta.toolkit</groupId>
+        <artifactId>terracotta-toolkit-api</artifactId>
+        <version>${terracotta-toolkit-api.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.terracotta.toolkit</groupId>
+        <artifactId>terracotta-toolkit-api-internal</artifactId>
+        <version>${terracotta-toolkit-api-internal.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.quartz-scheduler.internal</groupId>
+        <artifactId>quartz-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.quartz-scheduler.internal</groupId>
+        <artifactId>quartz-stubs</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.quartz-scheduler.internal</groupId>
+        <artifactId>quartz-oracle</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.quartz-scheduler</groupId>
+        <artifactId>quartz-jobs</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <build>
-    <pluginManagement>                                                           
+    <pluginManagement>
       <plugins>
-        <!--This plugin's configuration is used to store Eclipse m2e settings 
+        <!--This plugin's configuration is used to store Eclipse m2e settings
           only. It has no influence on the Maven build itself. -->
         <!--<plugin>
           <groupId>org.eclipse.m2e</groupId>
@@ -117,7 +287,7 @@
                   <action>
                     <ignore />
                   </action>
-                </pluginExecution>                
+                </pluginExecution>
                 <pluginExecution>
                   <pluginExecutionFilter>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -187,7 +357,7 @@
             <meminitial>128</meminitial>
             <maxmem>512</maxmem>
           </configuration>
-        </plugin>      
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-deploy-plugin</artifactId>
@@ -229,9 +399,9 @@
               <artifactId>quartz-checkstyle</artifactId>
               <version>${project.version}</version>
             </dependency>
-          </dependencies>					
+          </dependencies>
           <configuration>
-            <encoding>UTF-8</encoding>          
+            <encoding>UTF-8</encoding>
             <configLocation>${checkstyle-config-file}</configLocation>
             <headerLocation>${checkstyle-header-file}</headerLocation>
             <suppressionsLocation>${checkstyle-suppressions-file}</suppressionsLocation>
@@ -273,7 +443,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-      </plugin>      
+      </plugin>
     </plugins>
   </build>
 
@@ -379,11 +549,11 @@
     <repository>
       <id>terracotta-snapshots</id>
       <url>http://www.terracotta.org/download/reflector/snapshots</url>
-    </repository>  
+    </repository>
     <repository>
       <id>terracotta-releases</id>
-      <url>http://www.terracotta.org/download/reflector/releases</url>   
-    </repository>   
+      <url>http://www.terracotta.org/download/reflector/releases</url>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -394,7 +564,7 @@
     <pluginRepository>
       <id>terracotta-releases</id>
       <url>http://www.terracotta.org/download/reflector/releases</url>
-    </pluginRepository>    
+    </pluginRepository>
   </pluginRepositories>
   -->
 </project>

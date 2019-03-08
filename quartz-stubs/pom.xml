@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.quartz-scheduler</groupId>
-    <artifactId>quartz-parent</artifactId>
+    <artifactId>quartz</artifactId>
     <version>3.0.0</version>
   </parent>
 
