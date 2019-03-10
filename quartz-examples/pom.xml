@@ -2,14 +2,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
+    <modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.sse</groupId>
         <artifactId>quartz</artifactId>
-        <groupId>org.quartz-scheduler</groupId>
         <version>3.0.0</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>quartz-examples-custom</artifactId>
+    <artifactId>quartz-examples</artifactId>
+	<name>quartz-examples</name>
+	<packaging>jar</packaging>
 
     <properties>
         <skipDeploy>true</skipDeploy>
@@ -19,7 +21,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.quartz-scheduler.internal</groupId>
+            <groupId>com.sse</groupId>
             <artifactId>quartz-core</artifactId>
         </dependency>
         <dependency>

@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.quartz-scheduler</groupId>
+  <groupId>com.sse</groupId>
   <artifactId>quartz</artifactId>
   <version>3.0.0</version>
   <name>quartz</name>
@@ -57,7 +57,7 @@
     <module>quartz-weblogic</module>
     <module>quartz-jobs</module>
     <module>quartz-plugins</module>
-    <module>quartz-examples-custom</module>
+    <module>quartz-examples</module>
     <module>quartz-terracotta</module>
   </modules>
 
@@ -228,22 +228,22 @@
       </dependency>
 
       <dependency>
-        <groupId>org.quartz-scheduler.internal</groupId>
+        <groupId>com.sse</groupId>
         <artifactId>quartz-core</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.quartz-scheduler.internal</groupId>
+        <groupId>com.sse</groupId>
         <artifactId>quartz-stubs</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.quartz-scheduler.internal</groupId>
+        <groupId>com.sse</groupId>
         <artifactId>quartz-oracle</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.quartz-scheduler</groupId>
+        <groupId>com.sse</groupId>
         <artifactId>quartz-jobs</artifactId>
         <version>${project.version}</version>
       </dependency>

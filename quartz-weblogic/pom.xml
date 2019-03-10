@@ -3,26 +3,26 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.quartz-scheduler</groupId>
+    <groupId>com.sse</groupId>
     <artifactId>quartz</artifactId>
     <version>3.0.0</version>
   </parent>
 
-  <groupId>org.quartz-scheduler.internal</groupId>
   <artifactId>quartz-weblogic</artifactId>
   <name>quartz-weblogic</name>
+  <packaging>jar</packaging>
 
   <dependencies>
     <dependency>
-      <groupId>org.quartz-scheduler.internal</groupId>
+      <groupId>com.sse</groupId>
       <artifactId>quartz-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.quartz-scheduler.internal</groupId>
+      <groupId>com.sse</groupId>
       <artifactId>quartz-oracle</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.quartz-scheduler.internal</groupId>
+      <groupId>com.sse</groupId>
       <artifactId>quartz-stubs</artifactId>
       <scope>provided</scope>
     </dependency>    
