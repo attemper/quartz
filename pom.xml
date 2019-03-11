@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.sse</groupId>
+  <groupId>com.sse.quartz</groupId>
   <artifactId>quartz</artifactId>
   <version>3.0.0</version>
   <name>quartz</name>
@@ -63,8 +63,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.6</maven.compiler.source>
-    <maven.compiler.target>1.6</maven.compiler.target>
+    <java.version>1.6</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
 
     <skipDeploy>false</skipDeploy>
     <skipJavadoc>false</skipJavadoc>
@@ -100,7 +101,6 @@
 
   <dependencyManagement>
     <dependencies>
-      <!--Compile scope. If you add something to compile scope, you have to do the same thing in packaging/pom.xml -->
       <dependency>
         <groupId>com.zaxxer</groupId>
         <artifactId>HikariCP-java6</artifactId>
@@ -127,14 +127,13 @@
         <version>${slf4j.version}</version>
       </dependency>
 
-      <!-- provided scope -->
       <dependency>
         <groupId>org.apache.openejb</groupId>
         <artifactId>javaee-api</artifactId>
         <version>${javaee-api.version}</version>
       </dependency>
 
-      <!-- test dependencies -->
+      <!-- test -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-log4j12</artifactId>
@@ -228,22 +227,22 @@
       </dependency>
 
       <dependency>
-        <groupId>com.sse</groupId>
+        <groupId>${groupId}</groupId>
         <artifactId>quartz-core</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.sse</groupId>
+        <groupId>${groupId}</groupId>
         <artifactId>quartz-stubs</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.sse</groupId>
+        <groupId>${groupId}</groupId>
         <artifactId>quartz-oracle</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.sse</groupId>
+        <groupId>${groupId}</groupId>
         <artifactId>quartz-jobs</artifactId>
         <version>${project.version}</version>
       </dependency>
