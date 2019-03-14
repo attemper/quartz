@@ -1324,7 +1324,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
             qsInited = true;
     
             // Create Scheduler ref...
-            Scheduler scheduler = instantiate(rsrcs, qs);
+            Scheduler scheduler = instantiate(qs);
     
             // set job factory if specified
             if(jobFactory != null) {
@@ -1418,7 +1418,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
         }
     }
 
-    protected Scheduler instantiate(QuartzSchedulerResources rsrcs, QuartzScheduler qs) {
+    protected Scheduler instantiate(QuartzScheduler qs) {
 
         Scheduler scheduler = new StdScheduler(qs);
         return scheduler;
