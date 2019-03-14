@@ -15,13 +15,13 @@
  */
 package org.quartz.impl.jdbcjobstore;
 
-import java.util.TimeZone;
-
 import org.quartz.CalendarIntervalScheduleBuilder;
-import org.quartz.ScheduleBuilder;
 import org.quartz.DateBuilder.IntervalUnit;
+import org.quartz.ScheduleBuilder;
 import org.quartz.impl.triggers.CalendarIntervalTriggerImpl;
 import org.quartz.spi.OperableTrigger;
+
+import java.util.TimeZone;
 
 public class CalendarIntervalTriggerPersistenceDelegate extends SimplePropertiesTriggerPersistenceDelegateSupport {
 
@@ -46,13 +46,13 @@ public class CalendarIntervalTriggerPersistenceDelegate extends SimpleProperties
         props.setString2(calTrig.getTimeZone().getID());
         props.setBoolean1(calTrig.isPreserveHourOfDayAcrossDaylightSavings());
         props.setBoolean2(calTrig.isSkipDayIfHourDoesNotExist());
-        
+        props.setLong1(calTrig.getRepeatCount());
         return props;
     }
 
     @Override
     protected TriggerPropertyBundle getTriggerPropertyBundle(SimplePropertiesTriggerProperties props) {
-
+        int repeatCount = (int) props.getLong1();
         TimeZone tz = null; // if we use null, that's ok as system default tz will be used
         String tzId = props.getString2();
         if(tzId != null && tzId.trim().length() != 0) // there could be null entries from previously released versions
@@ -62,7 +62,8 @@ public class CalendarIntervalTriggerPersistenceDelegate extends SimpleProperties
             .withInterval(props.getInt1(), IntervalUnit.valueOf(props.getString1()))
             .inTimeZone(tz)
             .preserveHourOfDayAcrossDaylightSavings(props.isBoolean1())
-            .skipDayIfHourDoesNotExist(props.isBoolean2());
+                .skipDayIfHourDoesNotExist(props.isBoolean2())
+                .withRepeatCount(repeatCount);
         
         int timesTriggered = props.getInt2();
         

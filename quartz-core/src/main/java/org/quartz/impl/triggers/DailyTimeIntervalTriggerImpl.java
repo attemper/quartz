@@ -16,20 +16,12 @@
  */
 package org.quartz.impl.triggers;
 
+import org.quartz.*;
+import org.quartz.DateBuilder.IntervalUnit;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Set;
-
-import org.quartz.DailyTimeIntervalScheduleBuilder;
-import org.quartz.DailyTimeIntervalTrigger;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.ScheduleBuilder;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.TimeOfDay;
-import org.quartz.Trigger;
-import org.quartz.DateBuilder.IntervalUnit;
 
 /**
  * A concrete implementation of DailyTimeIntervalTrigger that is used to fire a <code>{@link org.quartz.JobDetail}</code>
@@ -62,7 +54,7 @@ import org.quartz.DateBuilder.IntervalUnit;
  * means trigger will fire once only! Setting any positive count then the trigger will repeat 
  * count + 1 times. Unlike SimpleTrigger, the default value of repeatCount of this trigger
  * is set to REPEAT_INDEFINITELY instead of 0 though.
- * 
+ *
  * @see DailyTimeIntervalTrigger
  * @see DailyTimeIntervalScheduleBuilder
  * 

@@ -17,11 +17,11 @@
 
 package org.quartz;
 
-import java.util.TimeZone;
-
 import org.quartz.DateBuilder.IntervalUnit;
 import org.quartz.impl.triggers.CalendarIntervalTriggerImpl;
 import org.quartz.spi.MutableTrigger;
+
+import java.util.TimeZone;
 
 /**
  * <code>CalendarIntervalScheduleBuilder</code> is a {@link ScheduleBuilder} 
@@ -65,6 +65,7 @@ public class CalendarIntervalScheduleBuilder extends ScheduleBuilder<CalendarInt
     private TimeZone timeZone;
     private boolean preserveHourOfDayAcrossDaylightSavings;
     private boolean skipDayIfHourDoesNotExist;
+    private int repeatCount = CalendarIntervalTrigger.REPEAT_INDEFINITELY;
     
     protected CalendarIntervalScheduleBuilder() {
     }
@@ -95,6 +96,7 @@ public class CalendarIntervalScheduleBuilder extends ScheduleBuilder<CalendarInt
         st.setTimeZone(timeZone);
         st.setPreserveHourOfDayAcrossDaylightSavings(preserveHourOfDayAcrossDaylightSavings);
         st.setSkipDayIfHourDoesNotExist(skipDayIfHourDoesNotExist);
+        st.setRepeatCount(repeatCount);
 
         return st;
     }
@@ -331,7 +333,19 @@ public class CalendarIntervalScheduleBuilder extends ScheduleBuilder<CalendarInt
         this.skipDayIfHourDoesNotExist = skipDay;
         return this;
     }
-    
+
+    /**
+     * Set number of times for interval to repeat.
+     *
+     * <p>Note: if you want total count = 1 (at start time) + repeatCount</p>
+     *
+     * @return the new CalendarIntervalScheduleBuilder
+     */
+    public CalendarIntervalScheduleBuilder withRepeatCount(int repeatCount) {
+        this.repeatCount = repeatCount;
+        return this;
+    }
+
     private void validateInterval(int timeInterval) {
         if(timeInterval <= 0)
             throw new IllegalArgumentException("Interval must be a positive value.");

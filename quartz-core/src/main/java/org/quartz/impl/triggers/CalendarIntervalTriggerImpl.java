@@ -18,22 +18,12 @@
 
 package org.quartz.impl.triggers;
 
+import org.quartz.*;
+import org.quartz.DateBuilder.IntervalUnit;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
-
-import org.quartz.CalendarIntervalScheduleBuilder;
-import org.quartz.CalendarIntervalTrigger;
-import org.quartz.CronTrigger;
-import org.quartz.DateBuilder.IntervalUnit;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.ScheduleBuilder;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.Trigger;
-import org.quartz.TriggerUtils;
 
 
 /**
@@ -54,7 +44,13 @@ import org.quartz.TriggerUtils;
  * occur on the 28th of the month, even if a 31st day exists.  If you want a trigger that always
  * fires on the last day of the month - regardless of the number of days in the month, 
  * you should use <code>CronTrigger</code>.</p> 
- * 
+ *
+ * <p>This trigger also supports "repeatCount" feature to end the trigger fire time after
+ * a certain number of count is reached. Just as the SimpleTrigger, setting repeatCount=0
+ * means trigger will fire once only! Setting any positive count then the trigger will repeat
+ * count + 1 times. Unlike SimpleTrigger, the default value of repeatCount of this trigger
+ * is set to REPEAT_INDEFINITELY instead of 0 though.
+ *
  * @see Trigger
  * @see CronTrigger
  * @see SimpleTrigger
@@ -94,6 +90,8 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
     private Date nextFireTime = null;
 
     private Date previousFireTime = null;
+
+    private int repeatCount = REPEAT_INDEFINITELY;
 
     private  int repeatInterval = 0;
     
@@ -680,6 +678,11 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
             return null;
         }
 
+        // Check repeatCount limit
+        if (repeatCount != REPEAT_INDEFINITELY && timesTriggered > repeatCount) {
+            return null;
+        }
+
         // increment afterTme by a second, so that we are 
         // comparing against a time after it!
         if (afterTime == null) {
@@ -971,5 +974,19 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
 
     public boolean hasAdditionalProperties() {
         return false;
+    }
+
+    @Override
+    public int getRepeatCount() {
+        return repeatCount;
+    }
+
+    public void setRepeatCount(int repeatCount) {
+        if (repeatCount < 0 && repeatCount != REPEAT_INDEFINITELY) {
+            throw new IllegalArgumentException("Repeat count must be >= 0, use the " +
+                    "constant REPEAT_INDEFINITELY for infinite.");
+        }
+
+        this.repeatCount = repeatCount;
     }
 }

@@ -15,10 +15,12 @@
  */
 package org.quartz;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
+import junit.framework.Assert;
+import org.junit.Test;
+import org.quartz.DateBuilder.IntervalUnit;
+import org.quartz.impl.calendar.BaseCalendar;
+import org.quartz.impl.triggers.CalendarIntervalTriggerImpl;
+import org.quartz.spi.OperableTrigger;
 
 import java.text.ParseException;
 import java.util.Calendar;
@@ -26,10 +28,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
-import org.junit.Test;
-import org.quartz.DateBuilder.IntervalUnit;
-import org.quartz.impl.calendar.BaseCalendar;
-import org.quartz.impl.triggers.CalendarIntervalTriggerImpl;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Unit tests for DateIntervalTrigger.
@@ -514,7 +516,20 @@ public class CalendarIntervalTriggerTest  extends SerializationTestSupport {
         new CalendarIntervalTriggerTest().writeJobDataFile("2.0");
     }
 
-
-
+    public void testRepeatCountTrigger() {
+        CalendarIntervalTrigger trigger = newTrigger()
+                .withIdentity("test")
+                .withSchedule(
+                        CalendarIntervalScheduleBuilder.calendarIntervalSchedule()
+                                .withIntervalInHours(1)
+                                .withRepeatCount(9))
+                .build();
+        Assert.assertEquals("test", trigger.getKey().getName());
+        Assert.assertEquals("DEFAULT", trigger.getKey().getGroup());
+        Assert.assertEquals(IntervalUnit.HOUR, trigger.getRepeatIntervalUnit());
+        Assert.assertEquals(1, trigger.getRepeatInterval());
+        List<Date> fireTimes = TriggerUtils.computeFireTimes((OperableTrigger) trigger, null, 48);
+        Assert.assertEquals(10, fireTimes.size());
+    }
 
 }
