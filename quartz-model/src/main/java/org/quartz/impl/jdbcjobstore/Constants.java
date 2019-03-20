@@ -182,6 +182,11 @@ public interface Constants {
     /** Cron Trigger type. */
     String TTYPE_CRON = "CRON";
 
+    /**
+     * Calendar Offset Trigger type
+     */
+    String TTYPE_CAL_OFFSET = "CAL_OFF";
+
     /** Calendar Interval Trigger type. */
     String TTYPE_CAL_INT = "CAL_INT";
 

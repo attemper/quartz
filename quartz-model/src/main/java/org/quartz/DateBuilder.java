@@ -55,7 +55,10 @@ import java.util.TimeZone;
  */
 public class DateBuilder {
 
-    public enum IntervalUnit { MILLISECOND, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR }
+    // add SEASON and HALF_YEAR
+    public enum IntervalUnit {
+        MILLISECOND, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, SEASON, HALF_YEAR, YEAR
+    }
     
     public static final int SUNDAY = 1;
 

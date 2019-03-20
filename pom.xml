@@ -50,6 +50,7 @@
   </developers>
   <modules>
     <module>quartz-checkstyle</module>
+    <module>quartz-model</module>
     <module>quartz-core</module>
     <module>quartz-jboss</module>
     <module>quartz-stubs</module>
@@ -226,6 +227,11 @@
         <version>${terracotta-toolkit-api-internal.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>${groupId}</groupId>
+        <artifactId>quartz-model</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>${groupId}</groupId>
         <artifactId>quartz-core</artifactId>
