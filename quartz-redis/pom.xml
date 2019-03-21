@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>quartz</artifactId>
+        <groupId>com.sse.quartz</groupId>
+        <version>3.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>quartz-redis</artifactId>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <luttuce.core.version>5.1.5.RELEASE</luttuce.core.version>
+        <mysql.connector.version>5.1.27</mysql.connector.version>
+        <hikari.version>2.3.13</hikari.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.sse.quartz</groupId>
+            <artifactId>quartz-core</artifactId>
+        </dependency>
+        <!--
+            redis client
+            https://lettuce.io/core/5.1.3.RELEASE/reference/
+        -->
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>${luttuce.core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql.connector.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP-java6</artifactId>
+            <version>${hikari.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -60,6 +60,7 @@
     <module>quartz-plugins</module>
     <module>quartz-examples</module>
     <module>quartz-terracotta</module>
+    <module>quartz-redis</module>
   </modules>
 
   <properties>
