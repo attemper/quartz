@@ -11,11 +11,11 @@ public class QuartzUsingRedis {
     public static void main(String[] args) throws SchedulerException {
         SchedulerFactory sf = new StdSchedulerFactory();
         Scheduler scheduler = sf.getScheduler();
-        //定义一个Trigger
-        /*Trigger trigger = TriggerBuilder.newTrigger().withIdentity("trigger4", "group1") //定义name/group
+        /*//定义一个Trigger
+        Trigger trigger = TriggerBuilder.newTrigger().withIdentity("trigger4", "group1") //定义name/group
                 .startNow()//一旦加入scheduler，立即生效
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule() //使用SimpleTrigger
-                        .withIntervalInSeconds(17) //每隔30秒执行一次
+                        .withIntervalInSeconds(30) //每隔30秒执行一次
                         .repeatForever()) //一直执行，奔腾到老不停歇
                 .build();
 

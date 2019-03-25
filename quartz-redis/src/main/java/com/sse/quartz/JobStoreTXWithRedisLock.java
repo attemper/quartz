@@ -18,6 +18,8 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
 
     private RedisClient redisClient;
 
+    private RedisCommands<String, String> redisCommands;
+
     private static final String UNLOCK_LUA;
 
     /**
@@ -57,13 +59,23 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
      */
     protected boolean ssl;
 
+    /**
+     * default expire seconds
+     */
+    protected int expireInSeconds = 2;
+
     @Override
     public void initialize(ClassLoadHelper classLoadHelper, SchedulerSignaler schedSignaler) throws SchedulerConfigException {
         super.initialize(classLoadHelper, schedSignaler);
         //init redis
-        //RedisURI redisURI = RedisURI.builder().withSsl(ssl).withHost(host).withPassword(password).withDatabase(database).build();
-        RedisURI redisURI = RedisURI.create(host, port);
-        redisClient = RedisClient.create(redisURI);
+        RedisURI redisURI = RedisURI.builder().redis(host, port).withSsl(ssl).withDatabase(database).build();
+        if (password != null && !"".equals(password.trim())) {
+            redisURI.setPassword(password);
+        }
+        //RedisURI redisURI = RedisURI.create(host, port);
+        this.redisClient = RedisClient.create(redisURI);
+        StatefulRedisConnection<String, String> connect = redisClient.connect();
+        this.redisCommands = connect.sync();
     }
 
     @Override
@@ -74,7 +86,7 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
         try {
             if (lockName != null) {
                 lockValue = UUID.randomUUID().toString();
-                transOwner = lock(lockName, lockValue, 60);
+                transOwner = lock(lockName, lockValue, expireInSeconds);
             }
 
             if (conn == null) {
@@ -115,7 +127,9 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
     @Override
     public void shutdown() {
         super.shutdown();
-        redisClient.shutdown();
+        if (redisClient != null) {
+            redisClient.shutdown();
+        }
     }
 
     /**
@@ -126,11 +140,7 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
      * @return
      */
     private boolean lock(String key, String value, long expire) {
-        StatefulRedisConnection<String, String> connect = redisClient.connect();
-        RedisCommands<String, String> sync = connect.sync();
-        SetArgs setArgs = new SetArgs();
-        setArgs.ex(expire).nx();
-        return sync.set(key, value, setArgs) != null;
+        return this.redisCommands.set(key, value, new SetArgs().ex(expire).nx()) != null;
     }
 
     /**
@@ -140,9 +150,7 @@ public class JobStoreTXWithRedisLock extends JobStoreTX {
      * @return
      */
     private boolean release(String key, String value) {
-        StatefulRedisConnection<String, String> connect = redisClient.connect();
-        RedisCommands<String, String> sync = connect.sync();
-        return sync.eval(UNLOCK_LUA, ScriptOutputType.BOOLEAN, new String[]{key}, value);
+        return this.redisCommands.eval(UNLOCK_LUA, ScriptOutputType.BOOLEAN, new String[]{key}, value);
     }
 
     /* ---------- Note: set methods must be void----------- */
