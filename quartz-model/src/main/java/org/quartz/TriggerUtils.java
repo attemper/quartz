@@ -18,11 +18,11 @@
 
 package org.quartz;
 
+import org.quartz.spi.OperableTrigger;
+
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
-
-import org.quartz.spi.OperableTrigger;
 
 /**
  * Convenience and utility methods for working with <code>{@link Trigger}s</code>.

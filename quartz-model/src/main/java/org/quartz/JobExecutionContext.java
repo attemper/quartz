@@ -17,7 +17,6 @@
 
 package org.quartz;
 
-import java.util.Calendar;
 import java.util.Date;
 
 /**

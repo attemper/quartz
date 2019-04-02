@@ -17,9 +17,9 @@
 
 package org.quartz;
 
-import java.io.Serializable;
-
 import org.quartz.utils.Key;
+
+import java.io.Serializable;
 
 /**
  * Matchers can be used in various {@link Scheduler} API methods to 

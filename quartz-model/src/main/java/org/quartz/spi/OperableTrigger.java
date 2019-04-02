@@ -1,12 +1,8 @@
 package org.quartz.spi;
 
-import java.util.Date;
+import org.quartz.*;
 
-import org.quartz.Calendar;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
+import java.util.Date;
 
 public interface OperableTrigger extends MutableTrigger {
 

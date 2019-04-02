@@ -18,23 +18,10 @@
 
 package org.quartz.impl.triggers;
 
-import java.util.Date;
-
-import org.quartz.Calendar;
-import org.quartz.CronTrigger;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobKey;
-import org.quartz.ScheduleBuilder;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.quartz.TriggerKey;
-import org.quartz.TriggerUtils;
+import org.quartz.*;
 import org.quartz.spi.OperableTrigger;
+
+import java.util.Date;
 
 
 /**
