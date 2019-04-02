@@ -216,6 +216,38 @@ public class CalendarIntervalScheduleBuilder extends ScheduleBuilder<CalendarInt
     }
 
     /**
+     * Specify an interval in the IntervalUnit.SEASON that the produced
+     * Trigger will repeat at.
+     *
+     * @param intervalInSeasons the number of seasons at which the trigger should repeat.
+     * @return the updated CalendarIntervalScheduleBuilder
+     * @see CalendarIntervalTrigger#getRepeatInterval()
+     * @see CalendarIntervalTrigger#getRepeatIntervalUnit()
+     */
+    public CalendarIntervalScheduleBuilder withIntervalInSeasons(int intervalInSeasons) {
+        validateInterval(intervalInSeasons);
+        this.interval = intervalInSeasons;
+        this.intervalUnit = IntervalUnit.SEASON;
+        return this;
+    }
+
+    /**
+     * Specify an interval in the IntervalUnit.HALF_YEAR that the produced
+     * Trigger will repeat at.
+     *
+     * @param intervalInHalfYears the number of half years at which the trigger should repeat.
+     * @return the updated CalendarIntervalScheduleBuilder
+     * @see CalendarIntervalTrigger#getRepeatInterval()
+     * @see CalendarIntervalTrigger#getRepeatIntervalUnit()
+     */
+    public CalendarIntervalScheduleBuilder withIntervalInHalfYears(int intervalInHalfYears) {
+        validateInterval(intervalInHalfYears);
+        this.interval = intervalInHalfYears;
+        this.intervalUnit = IntervalUnit.HALF_YEAR;
+        return this;
+    }
+
+    /**
      * Specify an interval in the IntervalUnit.YEAR that the produced 
      * Trigger will repeat at.
      * 

@@ -707,9 +707,6 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
 
         Date time = null;
         long repeatLong = getRepeatInterval();
-        
-        Calendar aTime = Calendar.getInstance();
-        aTime.setTime(afterTime);
 
         Calendar sTime = Calendar.getInstance();
         if(timeZone != null)
@@ -812,28 +809,58 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
                     sTime.add(java.util.Calendar.WEEK_OF_YEAR, getRepeatInterval());
                 }
                 time = sTime.getTime();
-            }
-            else if(getRepeatIntervalUnit().equals(IntervalUnit.MONTH)) {
+            } else if (getRepeatIntervalUnit().equals(IntervalUnit.MONTH)) {
                 sTime.setLenient(true);
-    
+
                 // because of the large variation in size of months, and 
                 // because months are already large blocks of time, we will
                 // just advance via brute-force iteration.
-                
-                while(!sTime.getTime().after(afterTime) &&
-                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {            
+
+                while (!sTime.getTime().after(afterTime) &&
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
                     sTime.add(java.util.Calendar.MONTH, getRepeatInterval());
                 }
-                while(daylightSavingHourShiftOccurredAndAdvanceNeeded(sTime, initialHourOfDay, afterTime) &&
+                while (daylightSavingHourShiftOccurredAndAdvanceNeeded(sTime, initialHourOfDay, afterTime) &&
                         (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
                     sTime.add(java.util.Calendar.MONTH, getRepeatInterval());
                 }
                 time = sTime.getTime();
-            }
-            else if(getRepeatIntervalUnit().equals(IntervalUnit.YEAR)) {
-    
+            } else if (getRepeatIntervalUnit().equals(IntervalUnit.SEASON)) {
+                sTime.setLenient(true);
+
+                // because of the large variation in size of seasons, and
+                // because months are already large blocks of time, we will
+                // just advance via brute-force iteration.
+
                 while(!sTime.getTime().after(afterTime) &&
-                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {            
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
+                    sTime.add(java.util.Calendar.MONTH, getRepeatInterval() * 3);
+                }
+                while(daylightSavingHourShiftOccurredAndAdvanceNeeded(sTime, initialHourOfDay, afterTime) &&
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
+                    sTime.add(java.util.Calendar.MONTH, getRepeatInterval() * 3);
+                }
+                time = sTime.getTime();
+            } else if (getRepeatIntervalUnit().equals(IntervalUnit.HALF_YEAR)) {
+                sTime.setLenient(true);
+
+                // because of the large variation in size of half year, and
+                // because months are already large blocks of time, we will
+                // just advance via brute-force iteration.
+
+                while (!sTime.getTime().after(afterTime) &&
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
+                    sTime.add(java.util.Calendar.MONTH, getRepeatInterval() * 6);
+                }
+                while (daylightSavingHourShiftOccurredAndAdvanceNeeded(sTime, initialHourOfDay, afterTime) &&
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
+                    sTime.add(java.util.Calendar.MONTH, getRepeatInterval() * 6);
+                }
+                time = sTime.getTime();
+            } else if (getRepeatIntervalUnit().equals(IntervalUnit.YEAR)) {
+
+                while(!sTime.getTime().after(afterTime) &&
+                        (sTime.get(java.util.Calendar.YEAR) < YEAR_TO_GIVEUP_SCHEDULING_AT)) {
                     sTime.add(java.util.Calendar.YEAR, getRepeatInterval());
                 }
                 while(daylightSavingHourShiftOccurredAndAdvanceNeeded(sTime, initialHourOfDay, afterTime) &&
@@ -910,11 +937,13 @@ public class CalendarIntervalTriggerImpl extends AbstractTrigger<CalendarInterva
         }
         else if(getRepeatIntervalUnit().equals(IntervalUnit.WEEK)) {
             lTime.add(java.util.Calendar.WEEK_OF_YEAR, -1 * getRepeatInterval());
-        }
-        else if(getRepeatIntervalUnit().equals(IntervalUnit.MONTH)) {
+        } else if (getRepeatIntervalUnit().equals(IntervalUnit.MONTH)) {
             lTime.add(java.util.Calendar.MONTH, -1 * getRepeatInterval());
-        }
-        else if(getRepeatIntervalUnit().equals(IntervalUnit.YEAR)) {
+        } else if (getRepeatIntervalUnit().equals(IntervalUnit.SEASON)) {
+            lTime.add(java.util.Calendar.MONTH, -1 * getRepeatInterval() * 3);
+        } else if (getRepeatIntervalUnit().equals(IntervalUnit.HALF_YEAR)) {
+            lTime.add(java.util.Calendar.MONTH, -1 * getRepeatInterval() * 6);
+        } else if (getRepeatIntervalUnit().equals(IntervalUnit.YEAR)) {
             lTime.add(java.util.Calendar.YEAR, -1 * getRepeatInterval());
         }
 
