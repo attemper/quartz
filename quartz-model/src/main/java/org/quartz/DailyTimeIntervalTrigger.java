@@ -16,10 +16,10 @@
  */
 package org.quartz;
 
+import org.quartz.DateBuilder.IntervalUnit;
+
 import java.util.Calendar;
 import java.util.Set;
-
-import org.quartz.DateBuilder.IntervalUnit;
 
 /**
  * A <code>{@link Trigger}</code> that is used to fire a <code>{@link org.quartz.JobDetail}</code>

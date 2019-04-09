@@ -17,11 +17,11 @@
 
 package org.quartz;
 
-import java.text.ParseException;
-import java.util.TimeZone;
-
 import org.quartz.impl.triggers.CronTriggerImpl;
 import org.quartz.spi.MutableTrigger;
+
+import java.text.ParseException;
+import java.util.TimeZone;
 
 /**
  * <code>CronScheduleBuilder</code> is a {@link ScheduleBuilder} that defines
