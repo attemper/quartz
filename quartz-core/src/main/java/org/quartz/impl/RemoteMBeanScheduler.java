@@ -16,36 +16,20 @@
  */
 package org.quartz.impl;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import org.quartz.Calendar;
+import org.quartz.*;
+import org.quartz.Trigger.TriggerState;
+import org.quartz.core.jmx.JobDetailSupport;
+import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.impl.matchers.StringMatcher;
+import org.quartz.spi.JobFactory;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
-
-import org.quartz.Calendar;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.ListenerManager;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerContext;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerMetaData;
-import org.quartz.Trigger;
-import org.quartz.Trigger.TriggerState;
-import org.quartz.TriggerKey;
-import org.quartz.UnableToInterruptJobException;
-import org.quartz.core.jmx.JobDetailSupport;
-import org.quartz.impl.matchers.GroupMatcher;
-import org.quartz.impl.matchers.StringMatcher;
-import org.quartz.spi.JobFactory;
+import java.util.*;
 
 /**
  * <p>
@@ -411,6 +395,7 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
      * instance.
      * </p>
      */
+    @Override
     public boolean unscheduleJob(TriggerKey triggerKey)
         throws SchedulerException {
         return (Boolean)invoke(
@@ -419,6 +404,21 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
                 new String[] { String.class.getName(), String.class.getName() });
     }
 
+    /**
+     * <p>
+     * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>,
+     * passing the <code>SchedulingContext</code> associated with this
+     * instance.
+     * </p>
+     */
+    @Override
+    public boolean unscheduleJobInMemory(TriggerKey triggerKey)
+            throws SchedulerException {
+        return (Boolean) invoke(
+                "unscheduleJobInMemory",
+                new Object[]{triggerKey.getName(), triggerKey.getGroup()},
+                new String[]{String.class.getName(), String.class.getName()});
+    }
 
     public boolean deleteJobs(List<JobKey> jobKeys) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
@@ -428,7 +428,13 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
 
+    @Override
     public void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
+        throw new SchedulerException("Operation not supported for remote schedulers.");
+    }
+
+    @Override
+    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
 

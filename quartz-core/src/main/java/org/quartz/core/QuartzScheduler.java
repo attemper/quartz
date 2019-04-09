@@ -18,50 +18,8 @@
 
 package org.quartz.core;
 
-import java.io.InputStream;
-import java.lang.management.ManagementFactory;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.Set;
-import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-
 import org.quartz.Calendar;
-import org.quartz.InterruptableJob;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobKey;
-import org.quartz.JobListener;
-import org.quartz.ListenerManager;
-import org.quartz.Matcher;
-import org.quartz.ObjectAlreadyExistsException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerContext;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerListener;
-import org.quartz.SchedulerMetaData;
-import org.quartz.Trigger;
-import static org.quartz.TriggerBuilder.*;
-import org.quartz.TriggerKey;
-import org.quartz.TriggerListener;
-import org.quartz.UnableToInterruptJobException;
+import org.quartz.*;
 import org.quartz.Trigger.CompletedExecutionInstruction;
 import org.quartz.Trigger.TriggerState;
 import org.quartz.core.jmx.QuartzSchedulerMBean;
@@ -69,13 +27,23 @@ import org.quartz.impl.SchedulerRepository;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.listeners.SchedulerListenerSupport;
 import org.quartz.simpl.PropertySettingJobFactory;
-import org.quartz.spi.JobFactory;
-import org.quartz.spi.OperableTrigger;
-import org.quartz.spi.SchedulerPlugin;
-import org.quartz.spi.SchedulerSignaler;
-import org.quartz.spi.ThreadExecutor;
+import org.quartz.spi.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * <p>
@@ -988,19 +956,36 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
         return result;
     }
 
+    @Override
     public void scheduleJobs(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace)  throws SchedulerException  {
+        validateTriggers(triggersAndJobs);
+        resources.getJobStore().storeJobsAndTriggers(triggersAndJobs, replace);
+        notifySchedulerThread(0L);
+        for(JobDetail job: triggersAndJobs.keySet())
+            notifySchedulerListenersJobAdded(job);
+    }
+
+    @Override
+    public void scheduleJobsInMemory(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace) throws SchedulerException {
+        validateTriggers(triggersAndJobs);
+        notifySchedulerThread(0L);
+        for (JobDetail job : triggersAndJobs.keySet())
+            notifySchedulerListenersJobAdded(job);
+    }
+
+    private void validateTriggers(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs) throws SchedulerException {
         validateState();
 
         // make sure all triggers refer to their associated job
-        for(Entry<JobDetail, Set<? extends Trigger>> e: triggersAndJobs.entrySet()) {
+        for (Entry<JobDetail, Set<? extends Trigger>> e : triggersAndJobs.entrySet()) {
             JobDetail job = e.getKey();
-            if(job == null) // there can be one of these (for adding a bulk set of triggers for pre-existing jobs)
+            if (job == null) // there can be one of these (for adding a bulk set of triggers for pre-existing jobs)
                 continue;
             Set<? extends Trigger> triggers = e.getValue();
-            if(triggers == null) // this is possible because the job may be durable, and not yet be having triggers
+            if (triggers == null) // this is possible because the job may be durable, and not yet be having triggers
                 continue;
-            for(Trigger trigger: triggers) {
-                OperableTrigger opt = (OperableTrigger)trigger;
+            for (Trigger trigger : triggers) {
+                OperableTrigger opt = (OperableTrigger) trigger;
                 opt.setJobKey(job.getKey());
 
                 opt.validate();
@@ -1008,9 +993,9 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
                 Calendar cal = null;
                 if (trigger.getCalendarName() != null) {
                     cal = resources.getJobStore().retrieveCalendar(trigger.getCalendarName());
-                    if(cal == null) {
+                    if (cal == null) {
                         throw new SchedulerException(
-                            "Calendar '" + trigger.getCalendarName() + "' not found for trigger: " + trigger.getKey());
+                                "Calendar '" + trigger.getCalendarName() + "' not found for trigger: " + trigger.getKey());
                     }
                 }
                 Date ft = opt.computeFirstFireTime(cal);
@@ -1018,21 +1003,25 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
                 if (ft == null) {
                     throw new SchedulerException(
                             "Based on configured schedule, the given trigger will never fire.");
-                }                
+                }
             }
         }
-
-        resources.getJobStore().storeJobsAndTriggers(triggersAndJobs, replace);
-        notifySchedulerThread(0L);
-        for(JobDetail job: triggersAndJobs.keySet())
-            notifySchedulerListenersJobAdded(job);
     }
 
+    @Override
     public void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob,
-            boolean replace) throws SchedulerException {
+                            boolean replace) throws SchedulerException {
         Map<JobDetail, Set<? extends Trigger>> triggersAndJobs = new HashMap<JobDetail, Set<? extends Trigger>>();
         triggersAndJobs.put(jobDetail, triggersForJob);
         scheduleJobs(triggersAndJobs, replace);
+    }
+
+    @Override
+    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob,
+                                    boolean replace) throws SchedulerException {
+        Map<JobDetail, Set<? extends Trigger>> triggersAndJobs = new HashMap<JobDetail, Set<? extends Trigger>>();
+        triggersAndJobs.put(jobDetail, triggersForJob);
+        scheduleJobsInMemory(triggersAndJobs, replace);
     }
 
     public boolean unscheduleJobs(List<TriggerKey> triggerKeys) throws SchedulerException  {
@@ -1053,6 +1042,7 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
      * scheduler.
      * </p>
      */
+    @Override
     public boolean unscheduleJob(TriggerKey triggerKey) throws SchedulerException {
         validateState();
 
@@ -1066,6 +1056,21 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
         return true;
     }
 
+    /**
+     * <p>
+     * Remove the indicated <code>{@link org.quartz.Trigger}</code> from the
+     * scheduler.
+     * </p>
+     */
+    @Override
+    public boolean unscheduleJobInMemory(TriggerKey triggerKey) throws SchedulerException {
+        validateState();
+
+        notifySchedulerThread(0L);
+        notifySchedulerListenersUnscheduled(triggerKey);
+
+        return true;
+    }
 
     /**
      * <p>

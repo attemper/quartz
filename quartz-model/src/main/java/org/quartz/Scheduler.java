@@ -18,15 +18,15 @@
 
 package org.quartz;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.quartz.Trigger.TriggerState;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.spi.JobFactory;
 import org.quartz.utils.Key;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * This is the main interface of a Quartz Scheduler.
@@ -452,7 +452,16 @@ public interface Scheduler {
      * are not unique and the replace flag is not set to true. 
      */
     void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException;
-    
+
+    /**
+     * Schedule the given job with the related set of triggers.
+     *
+     * <p>If any of the given job or triggers already exist (or more
+     * specifically, if the keys are not unique) and the replace
+     * parameter is not set to true then an exception will be thrown.</p>
+     */
+    void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException;
+
     /**
      * Remove the indicated <code>{@link Trigger}</code> from the scheduler.
      * 
@@ -461,6 +470,15 @@ public interface Scheduler {
      */
     boolean unscheduleJob(TriggerKey triggerKey)
         throws SchedulerException;
+
+    /**
+     * Remove the indicated <code>{@link Trigger}</code> from the scheduler.
+     *
+     * <p>If the related job does not have any other triggers, and the job is
+     * not durable, then the job will also be deleted.</p>
+     */
+    boolean unscheduleJobInMemory(TriggerKey triggerKey)
+            throws SchedulerException;
 
     /**
      * Remove all of the indicated <code>{@link Trigger}</code>s from the scheduler.

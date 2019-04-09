@@ -17,6 +17,12 @@
 
 package org.quartz.impl;
 
+import org.quartz.*;
+import org.quartz.Trigger.TriggerState;
+import org.quartz.core.RemotableQuartzScheduler;
+import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.spi.JobFactory;
+
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -24,24 +30,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.quartz.Calendar;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.ListenerManager;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerContext;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerMetaData;
-import org.quartz.Trigger;
-import org.quartz.TriggerKey;
-import org.quartz.UnableToInterruptJobException;
-import org.quartz.Trigger.TriggerState;
-import org.quartz.core.RemotableQuartzScheduler;
-import org.quartz.impl.matchers.GroupMatcher;
-import org.quartz.spi.JobFactory;
 
 /**
  * <p>
@@ -427,6 +415,16 @@ public class RemoteScheduler implements Scheduler {
         }
     }
 
+    @Override
+    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
+        try {
+            getRemoteScheduler().scheduleJobInMemory(jobDetail, triggersForJob, replace);
+        } catch (RemoteException re) {
+            throw invalidateHandleCreateException(
+                    "Error communicating with remote scheduler.", re);
+        }
+    }
+
     public boolean unscheduleJobs(List<TriggerKey> triggerKeys)
             throws SchedulerException {
         try {
@@ -462,6 +460,16 @@ public class RemoteScheduler implements Scheduler {
         throws SchedulerException {
         try {
             return getRemoteScheduler().unscheduleJob(triggerKey);
+        } catch (RemoteException re) {
+            throw invalidateHandleCreateException(
+                    "Error communicating with remote scheduler.", re);
+        }
+    }
+
+    @Override
+    public boolean unscheduleJobInMemory(TriggerKey triggerKey) throws SchedulerException {
+        try {
+            return getRemoteScheduler().unscheduleJobInMemory(triggerKey);
         } catch (RemoteException re) {
             throw invalidateHandleCreateException(
                     "Error communicating with remote scheduler.", re);
