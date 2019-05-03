@@ -17,10 +17,10 @@
 
 package org.quartz.spi;
 
-import java.util.Date;
-
 import org.quartz.Calendar;
 import org.quartz.JobDetail;
+
+import java.util.Date;
 
 /**
  * <p>

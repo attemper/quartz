@@ -431,7 +431,7 @@ public class DailyTimeIntervalTriggerImpl extends AbstractTrigger<DailyTimeInter
     public void updateAfterMisfire(org.quartz.Calendar cal) {
         int instr = getMisfireInstruction();
 
-        if(instr == Trigger.MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY)
+        if(instr == MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY)
             return;
 
         if (instr == MISFIRE_INSTRUCTION_SMART_POLICY) {

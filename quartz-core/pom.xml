@@ -13,10 +13,6 @@
   <packaging>jar</packaging>
 
   <dependencies>
-    <dependency>
-      <groupId>${groupId}</groupId>
-      <artifactId>quartz-model</artifactId>
-    </dependency>
     <!--Compile scope. If you add something to compile scope, you have to do the same thing in packaging/pom.xml -->
     <dependency>
       <groupId>com.mchange</groupId>
