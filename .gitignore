@@ -2,6 +2,7 @@
 target/
 derby.log
 logs/
+tmp/
 
 # IntelliJ IDEA noise
 out/

@@ -960,17 +960,25 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
     public void scheduleJobs(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace)  throws SchedulerException  {
         validateTriggers(triggersAndJobs);
         resources.getJobStore().storeJobsAndTriggers(triggersAndJobs, replace);
-        notifySchedulerThread(0L);
-        for(JobDetail job: triggersAndJobs.keySet())
-            notifySchedulerListenersJobAdded(job);
+        notifyJobs(triggersAndJobs);
     }
 
     @Override
     public void scheduleJobsInMemory(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace) throws SchedulerException {
         validateTriggers(triggersAndJobs);
+        notifyJobs(triggersAndJobs);
+    }
+
+    private void notifyJobs(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs) {
         notifySchedulerThread(0L);
-        for (JobDetail job : triggersAndJobs.keySet())
+        for (JobDetail job : triggersAndJobs.keySet()) {
             notifySchedulerListenersJobAdded(job);
+
+            Set<? extends Trigger> triggers = triggersAndJobs.get(job);
+            for (Trigger trigger : triggers) {
+                notifySchedulerListenersSchduled(trigger);
+            }
+        }
     }
 
     private void validateTriggers(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs) throws SchedulerException {

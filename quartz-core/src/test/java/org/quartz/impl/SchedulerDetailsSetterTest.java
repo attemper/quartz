@@ -15,12 +15,7 @@
  */
 package org.quartz.impl;
 
-import java.io.IOException;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import junit.framework.TestCase;
-
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -29,6 +24,10 @@ import org.quartz.simpl.RAMJobStore;
 import org.quartz.simpl.SimpleThreadPool;
 import org.quartz.spi.ThreadPool;
 
+import java.io.IOException;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class SchedulerDetailsSetterTest extends TestCase {
 
     public void testSetter() throws SchedulerException, IOException {
@@ -36,10 +35,10 @@ public class SchedulerDetailsSetterTest extends TestCase {
         props.load(getClass().getResourceAsStream("/org/quartz/quartz.properties"));
         props.setProperty(StdSchedulerFactory.PROP_THREAD_POOL_CLASS, MyThreadPool.class.getName());
         props.setProperty(StdSchedulerFactory.PROP_JOB_STORE_CLASS, MyJobStore.class.getName());
-        
+
         StdSchedulerFactory factory = new StdSchedulerFactory(props);
         factory.getScheduler(); // this will initialize all the test fixtures.
-        
+
         assertEquals(3, instanceIdCalls.get());
         assertEquals(3, instanceNameCalls.get());
 
@@ -47,7 +46,7 @@ public class SchedulerDetailsSetterTest extends TestCase {
         directFactory.createScheduler(new MyThreadPool(), new MyJobStore());
 
         assertEquals(5, instanceIdCalls.get());
-        assertEquals(5, instanceNameCalls.get());
+        assertEquals(6, instanceNameCalls.get());
     }
 
     public void testMissingSetterMethods() throws SchedulerException  {
@@ -93,7 +92,7 @@ public class SchedulerDetailsSetterTest extends TestCase {
     private static final AtomicInteger instanceNameCalls = new AtomicInteger();
 
     public static class MyThreadPool extends SimpleThreadPool {
-        
+
         @Override
         public void initialize() {
         }

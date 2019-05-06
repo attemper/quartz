@@ -30,7 +30,7 @@ import org.quartz.spi.OperableTrigger;
  * @see CalendarOffsetScheduleBuilder
  * @see CalendarOffsetTrigger
  * 
- * @since 3.0.0
+ * @since 3.0.0-SNAPSHOT
  * 
  * @author ldang <ldang@sse.com.cn>
  */

@@ -3,9 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.sse.quartz</groupId>
+  <groupId>com.github.quartz</groupId>
   <artifactId>quartz</artifactId>
-  <version>3.0.0</version>
+  <version>3.0.0-SNAPSHOT</version>
   <name>quartz</name>
   <packaging>pom</packaging>
 
@@ -74,7 +74,7 @@
 
     <hikaricp.version>2.3.13</hikaricp.version>
     <druid.version>1.1.13</druid.version>
-    <c3p0.version>0.9.5.2</c3p0.version>
+    <c3p0.version>0.9.5.4</c3p0.version>
 
     <commons-io.version>2.4</commons-io.version>
 
@@ -93,11 +93,11 @@
     <log4j.version>1.2.16</log4j.version>
     <junit-dep.version>4.10</junit-dep.version>
 
-    <maven-forge-plugin.version>1.1.9</maven-forge-plugin.version>
     <gmaven-plugin.version>1.4</gmaven-plugin.version>
-    <checkstyle-suppressions-file>suppressions.xml</checkstyle-suppressions-file>
-    <checkstyle-config-file>checkstyle.xml</checkstyle-config-file>
-    <checkstyle-header-file>header.txt</checkstyle-header-file>
+    <checkstyle-suppressions-file>${user.dir}/checkstyle/src/main/resources/suppressions.xml
+    </checkstyle-suppressions-file>
+    <checkstyle-config-file>${user.dir}/checkstyle/src/main/resources/checkstyle.xml</checkstyle-config-file>
+    <checkstyle-header-file>${user.dir}/checkstyle/src/main/resources/header.txt</checkstyle-header-file>
   </properties>
 
   <dependencyManagement>
@@ -228,22 +228,22 @@
       </dependency>
 
       <dependency>
-        <groupId>${groupId}</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>quartz-core</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>${groupId}</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>quartz-stubs</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>${groupId}</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>quartz-oracle</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>${groupId}</groupId>
+        <groupId>${project.groupId}</groupId>
         <artifactId>quartz-jobs</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -448,12 +448,53 @@
   </build>
 
   <profiles>
+    <!--
+    <profile>
+      <id>postgres-test</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.postgresql</groupId>
+          <artifactId>postgresql</artifactId>
+          <version>42.2.5.jre7</version>
+        </dependency>
+      </dependencies>
+      <properties>
+        <liquibase.url>jdbc:postgresql://localhost:5432/quartz</liquibase.url>
+        <liquibase.username>quartz</liquibase.username>
+        <liquibase.password>quartz123</liquibase.password>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-maven-plugin</artifactId>
+            <version>3.6.3</version>
+            <configuration>
+              <changeLogFile>org/quartz/impl/jdbcjobstore/liquibase.quartz.init.xml</changeLogFile>
+              <driver>org.postgresql.Driver</driver>
+              <url>${liquibase.url}</url>
+              <username>${liquibase.username}</username>
+              <password>${liquibase.password}</password>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>process-resources</phase>
+                <goals>
+                  <goal>update</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>dist</id>
       <modules>
         <module>distribution</module>
       </modules>
     </profile>
+    -->
     <profile>
       <!-- Profile to sign artifacts with a PGP key (using GPG). -->
       <id>sign-artifacts</id>

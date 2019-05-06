@@ -17,11 +17,6 @@
 
 package org.quartz.impl;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
@@ -31,13 +26,14 @@ import org.quartz.core.QuartzSchedulerResources;
 import org.quartz.simpl.CascadingClassLoadHelper;
 import org.quartz.simpl.RAMJobStore;
 import org.quartz.simpl.SimpleThreadPool;
-import org.quartz.spi.ClassLoadHelper;
-import org.quartz.spi.JobStore;
-import org.quartz.spi.SchedulerPlugin;
-import org.quartz.spi.ThreadExecutor;
-import org.quartz.spi.ThreadPool;
+import org.quartz.spi.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * <p>
@@ -172,7 +168,6 @@ public class DirectSchedulerFactory implements SchedulerFactory {
         throws SchedulerException {
         SimpleThreadPool threadPool = new SimpleThreadPool(maxThreads,
                 Thread.NORM_PRIORITY);
-        threadPool.initialize();
         JobStore jobStore = new RAMJobStore();
         this.createScheduler(threadPool, jobStore);
     }
@@ -464,7 +459,7 @@ public class DirectSchedulerFactory implements SchedulerFactory {
 
         // Fire everything up
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+        threadPool.setInstanceName(schedulerName);
         threadPool.initialize();
         
         QuartzSchedulerResources qrs = new QuartzSchedulerResources();

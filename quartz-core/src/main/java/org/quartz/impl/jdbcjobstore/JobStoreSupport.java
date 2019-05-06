@@ -17,50 +17,26 @@
 
 package org.quartz.impl.jdbcjobstore;
 
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.quartz.Calendar;
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
-import org.quartz.JobPersistenceException;
-import org.quartz.ObjectAlreadyExistsException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerConfigException;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.Trigger.CompletedExecutionInstruction;
 import org.quartz.Trigger.TriggerState;
-import org.quartz.TriggerKey;
 import org.quartz.impl.DefaultThreadExecutor;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.impl.matchers.StringMatcher;
 import org.quartz.impl.matchers.StringMatcher.StringOperatorName;
 import org.quartz.impl.triggers.SimpleTriggerImpl;
-import org.quartz.spi.ClassLoadHelper;
-import org.quartz.spi.JobStore;
-import org.quartz.spi.OperableTrigger;
-import org.quartz.spi.SchedulerSignaler;
-import org.quartz.spi.ThreadExecutor;
-import org.quartz.spi.TriggerFiredBundle;
-import org.quartz.spi.TriggerFiredResult;
+import org.quartz.spi.*;
 import org.quartz.utils.DBConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.*;
 
 
 /**
@@ -2802,11 +2778,11 @@ public abstract class JobStoreSupport implements JobStore, Constants {
     // FUTURE_TODO: this really ought to return something like a FiredTriggerBundle,
     // so that the fireInstanceId doesn't have to be on the trigger...
     protected List<OperableTrigger> acquireNextTrigger(Connection conn, long noLaterThan, int maxCount, long timeWindow)
-        throws JobPersistenceException {
+            throws JobPersistenceException {
         if (timeWindow < 0) {
-          throw new IllegalArgumentException();
+            throw new IllegalArgumentException();
         }
-        
+
         List<OperableTrigger> acquiredTriggers = new ArrayList<OperableTrigger>();
         Set<JobKey> acquiredJobKeysForNoConcurrentExec = new HashSet<JobKey>();
         final int MAX_DO_LOOP_RETRY = 3;
@@ -2815,7 +2791,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
             currentLoopCount ++;
             try {
                 List<TriggerKey> keys = getDelegate().selectTriggerToAcquire(conn, noLaterThan + timeWindow, getMisfireTime(), maxCount);
-                
+
                 // No trigger is ready to fire yet.
                 if (keys == null || keys.size() == 0)
                     return acquiredTriggers;
@@ -2828,7 +2804,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                     if(nextTrigger == null) {
                         continue; // next trigger
                     }
-                    
+
                     // If trigger's job is set as @DisallowConcurrentExecution, and it has already been added to result, then
                     // put it back into the timeTriggers set and continue to search for next trigger.
                     JobKey jobKey = nextTrigger.getJobKey();
@@ -2844,7 +2820,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                         }
                         continue;
                     }
-                    
+
                     if (job.isConcurrentExectionDisallowed()) {
                         if (acquiredJobKeysForNoConcurrentExec.contains(jobKey)) {
                             continue; // next trigger
@@ -2852,9 +2828,22 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                             acquiredJobKeysForNoConcurrentExec.add(jobKey);
                         }
                     }
-                    
-                    if (nextTrigger.getNextFireTime().getTime() > batchEnd) {
-                      break;
+
+                    Date nextFireTime = nextTrigger.getNextFireTime();
+
+                    // A trigger should not return NULL on nextFireTime when fetched from DB.
+                    // But for whatever reason if we do have this (BAD trigger implementation or
+                    // data?), we then should log a warning and continue to next trigger.
+                    // User would need to manually fix these triggers from DB as they will not
+                    // able to be clean up by Quartz since we are not returning it to be processed.
+                    if (nextFireTime == null) {
+                        log.warn("Trigger {} returned null on nextFireTime and yet still exists in DB!",
+                                nextTrigger.getKey());
+                        continue;
+                    }
+
+                    if (nextFireTime.getTime() > batchEnd) {
+                        break;
                     }
                     // We now have a acquired trigger, let's add to return list.
                     // If our trigger was no longer in the expected state, try a new one.
@@ -2866,7 +2855,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                     getDelegate().insertFiredTrigger(conn, nextTrigger, STATE_ACQUIRED, null);
 
                     if(acquiredTriggers.isEmpty()) {
-                        batchEnd = Math.max(nextTrigger.getNextFireTime().getTime(), System.currentTimeMillis()) + timeWindow;
+                        batchEnd = Math.max(nextFireTime.getTime(), System.currentTimeMillis()) + timeWindow;
                     }
                     acquiredTriggers.add(nextTrigger);
                 }
@@ -2876,15 +2865,15 @@ public abstract class JobStoreSupport implements JobStore, Constants {
                 if(acquiredTriggers.size() == 0 && currentLoopCount < MAX_DO_LOOP_RETRY) {
                     continue;
                 }
-                
+
                 // We are done with the while loop.
                 break;
             } catch (Exception e) {
                 throw new JobPersistenceException(
-                          "Couldn't acquire next trigger: " + e.getMessage(), e);
+                        "Couldn't acquire next trigger: " + e.getMessage(), e);
             }
         } while (true);
-        
+
         // Return the acquired trigger list
         return acquiredTriggers;
     }
@@ -2912,6 +2901,8 @@ public abstract class JobStoreSupport implements JobStore, Constants {
         try {
             getDelegate().updateTriggerStateFromOtherState(conn,
                     trigger.getKey(), STATE_WAITING, STATE_ACQUIRED);
+            getDelegate().updateTriggerStateFromOtherState(conn,
+                    trigger.getKey(), STATE_WAITING, STATE_BLOCKED);
             getDelegate().deleteFiredTrigger(conn, trigger.getFireInstanceId());
         } catch (SQLException e) {
             throw new JobPersistenceException(

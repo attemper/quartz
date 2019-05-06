@@ -842,11 +842,16 @@ public class DailyTimeIntervalTriggerImpl extends AbstractTrigger<DailyTimeInter
         }
         if (repeatIntervalUnit == IntervalUnit.HOUR && repeatInterval > 24 ) {
             throw new SchedulerException("repeatInterval can not exceed 24 hours. Given " + repeatInterval + " hours.");
-        }        
-        
+        }
+
         // Ensure timeOfDay is in order.
-        if (getEndTimeOfDay() != null && !getStartTimeOfDay().before(getEndTimeOfDay())) {
-            throw new SchedulerException("StartTimeOfDay " + startTimeOfDay + " should not come after endTimeOfDay " + endTimeOfDay);
+        // NOTE: We allow startTimeOfDay to be set equal to endTimeOfDay so the repeatCount can be
+        // set to 1.
+        if (getEndTimeOfDay() != null
+                && !getStartTimeOfDay().equals(getEndTimeOfDay())
+                && !getStartTimeOfDay().before(getEndTimeOfDay())) {
+            throw new SchedulerException("StartTimeOfDay " + startTimeOfDay
+                    + " should not come after endTimeOfDay " + endTimeOfDay);
         }
     }
 

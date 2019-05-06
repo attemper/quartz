@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>quartz</artifactId>
-        <groupId>com.sse.quartz</groupId>
-        <version>3.0.0</version>
+        <groupId>com.github.quartz</groupId>
+        <version>3.0.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -21,7 +21,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.sse.quartz</groupId>
+            <groupId>com.github.quartz</groupId>
             <artifactId>quartz-core</artifactId>
         </dependency>
         <!--

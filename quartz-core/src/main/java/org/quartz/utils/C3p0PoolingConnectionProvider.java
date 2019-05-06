@@ -17,14 +17,13 @@
 
 package org.quartz.utils;
 
+import com.mchange.v2.c3p0.ComboPooledDataSource;
+import org.quartz.SchedulerException;
+
 import java.beans.PropertyVetoException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import org.quartz.SchedulerException;
-
-import com.mchange.v2.c3p0.ComboPooledDataSource;
 
 /**
  * <p>
@@ -75,7 +74,7 @@ public class C3p0PoolingConnectionProvider implements PoolingConnectionProvider 
     public static final String DB_VALIDATE_ON_CHECKOUT = "validateOnCheckout";
 
     /** Discard connections after they have been idle this many seconds.  0 disables the feature. Default is 0.*/
-    private static final String DB_DISCARD_IDLE_CONNECTIONS_SECONDS = "maxIdleTime";
+    public static final String DB_DISCARD_IDLE_CONNECTIONS_SECONDS = "maxIdleTime";
 
     /** Default maximum number of database connections in the pool. */
     public static final int DEFAULT_DB_MAX_CACHED_STATEMENTS_PER_CONNECTION = 120;

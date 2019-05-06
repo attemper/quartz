@@ -17,12 +17,7 @@
 
 package org.quartz.impl;
 
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerConfigException;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerFactory;
-import org.quartz.TriggerListener;
+import org.quartz.*;
 import org.quartz.core.JobRunShellFactory;
 import org.quartz.core.QuartzScheduler;
 import org.quartz.core.QuartzSchedulerResources;
@@ -36,18 +31,8 @@ import org.quartz.impl.matchers.EverythingMatcher;
 import org.quartz.management.ManagementRESTServiceConfiguration;
 import org.quartz.simpl.RAMJobStore;
 import org.quartz.simpl.SimpleThreadPool;
-import org.quartz.spi.ClassLoadHelper;
-import org.quartz.spi.InstanceIdGenerator;
-import org.quartz.spi.JobFactory;
-import org.quartz.spi.JobStore;
-import org.quartz.spi.SchedulerPlugin;
-import org.quartz.spi.ThreadExecutor;
-import org.quartz.spi.ThreadPool;
-import org.quartz.utils.ConnectionProvider;
-import org.quartz.utils.DBConnectionManager;
-import org.quartz.utils.JNDIConnectionProvider;
-import org.quartz.utils.PoolingConnectionProvider;
-import org.quartz.utils.PropertiesParser;
+import org.quartz.spi.*;
+import org.quartz.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,11 +40,7 @@ import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.security.AccessControlException;
@@ -1403,7 +1384,15 @@ public class StdSchedulerFactory implements SchedulerFactory {
         copyProps.remove(PoolingConnectionProvider.DB_PASSWORD);
         copyProps.remove(PoolingConnectionProvider.DB_MAX_CONNECTIONS);
         copyProps.remove(PoolingConnectionProvider.DB_VALIDATION_QUERY);
-        props.remove(PoolingConnectionProvider.POOLING_PROVIDER);
+        copyProps.remove(PoolingConnectionProvider.POOLING_PROVIDER);
+
+        if (cp instanceof C3p0PoolingConnectionProvider) {
+            copyProps.remove(C3p0PoolingConnectionProvider.DB_MAX_CACHED_STATEMENTS_PER_CONNECTION);
+            copyProps.remove(C3p0PoolingConnectionProvider.DB_VALIDATE_ON_CHECKOUT);
+            copyProps.remove(C3p0PoolingConnectionProvider.DB_IDLE_VALIDATION_SECONDS);
+            copyProps.remove(C3p0PoolingConnectionProvider.DB_DISCARD_IDLE_CONNECTIONS_SECONDS);
+        }
+
         setBeanProps(cp.getDataSource(), copyProps);
     }
 

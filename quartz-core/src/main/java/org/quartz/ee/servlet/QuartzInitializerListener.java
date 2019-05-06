@@ -17,15 +17,15 @@
 
 package org.quartz.ee.servlet;
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
 
 /**
  * <p>
@@ -160,7 +160,7 @@ public class QuartzInitializerListener implements ServletContextListener {
                 performShutdown = Boolean.valueOf(shutdownPref).booleanValue();
             }
             String shutdownWaitPref = servletContext.getInitParameter("quartz:wait-on-shutdown");
-            if (shutdownPref != null) {
+            if (shutdownWaitPref != null) {
                 waitOnShutdown = Boolean.valueOf(shutdownWaitPref).booleanValue();
             }
 

@@ -3,9 +3,9 @@
 
   <modelVersion>4.0.0</modelVersion>
   <parent>
-      <groupId>com.sse.quartz</groupId>
+    <groupId>com.github.quartz</groupId>
     <artifactId>quartz</artifactId>
-    <version>3.0.0</version>
+    <version>3.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>quartz-jboss</artifactId>
@@ -14,7 +14,7 @@
 
   <dependencies>
     <dependency>
-        <groupId>${groupId}</groupId>
+      <groupId>${project.groupId}</groupId>
       <artifactId>quartz-core</artifactId>
     </dependency>
     <dependency>
