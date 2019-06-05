@@ -119,31 +119,31 @@
         </executions>
       </plugin>
 
-      <plugin>
+      <!--<plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.10</version>
         <configuration>
           <forkMode>always</forkMode>
-          <systemProperties>  
+          <systemProperties>
             <property>
               <name>buildDirectory</name>
-              <value>${project.build.directory}</value>            
+              <value>${project.build.directory}</value>
             </property>
             <property>
-              <!-- skip update check in tests -->
+              &lt;!&ndash; skip update check in tests &ndash;&gt;
               <name>org.quartz.scheduler.skipUpdateCheck</name>
               <value>true</value>
             </property>
           </systemProperties>
-        </configuration>      
-      </plugin>
+        </configuration>
+      </plugin>-->
     </plugins>
 
     <pluginManagement>
       <plugins>
         <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-        <plugin>
+        <!--<plugin>
           <groupId>org.eclipse.m2e</groupId>
           <artifactId>lifecycle-mapping</artifactId>
           <version>1.0.0</version>
@@ -166,7 +166,7 @@
               </pluginExecutions>
             </lifecycleMappingMetadata>
           </configuration>
-        </plugin>
+        </plugin>-->
       </plugins>
     </pluginManagement>
   </build>
