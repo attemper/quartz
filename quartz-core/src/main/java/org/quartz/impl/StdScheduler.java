@@ -557,6 +557,17 @@ public class StdScheduler implements Scheduler {
      * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
      * </p>
      */
+    @Override
+    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
+            throws SchedulerException {
+        sched.addCalendarInMemory(calName, calendar, replace, updateTriggers);
+    }
+
+    /**
+     * <p>
+     * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
+     * </p>
+     */
     public boolean deleteCalendar(String calName) throws SchedulerException {
         return sched.deleteCalendar(calName);
     }

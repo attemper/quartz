@@ -145,6 +145,8 @@ public interface RemotableQuartzScheduler extends Remote {
 
     void addCalendar(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException, RemoteException;
 
+    void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException, RemoteException;
+
     boolean deleteCalendar(String calName) throws SchedulerException, RemoteException;
 
     Calendar getCalendar(String calName) throws SchedulerException, RemoteException;

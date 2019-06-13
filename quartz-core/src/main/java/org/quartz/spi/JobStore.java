@@ -17,24 +17,15 @@
 
 package org.quartz.spi;
 
+import org.quartz.*;
+import org.quartz.Trigger.CompletedExecutionInstruction;
+import org.quartz.Trigger.TriggerState;
+import org.quartz.impl.matchers.GroupMatcher;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.quartz.Calendar;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
-import org.quartz.JobPersistenceException;
-import org.quartz.ObjectAlreadyExistsException;
-import org.quartz.SchedulerConfigException;
-import org.quartz.SchedulerException;
-import org.quartz.Trigger;
-import org.quartz.TriggerKey;
-import org.quartz.Trigger.CompletedExecutionInstruction;
-import org.quartz.Trigger.TriggerState;
-import org.quartz.impl.matchers.GroupMatcher;
 
 /**
  * <p>
@@ -417,6 +408,17 @@ public interface JobStore {
      * </p>
      */
     List<OperableTrigger> getTriggersForJob(JobKey jobKey) throws JobPersistenceException;
+
+    /**
+     * Get all of the Triggers that are associated to the given Calendar.
+     *
+     * <p>
+     * If there are no matches, a zero-length array should be returned.
+     * </p>
+     */
+    List<OperableTrigger> getTriggersForCalendar(String calName) throws JobPersistenceException;
+
+
 
     /**
      * Get the current state of the identified <code>{@link Trigger}</code>.

@@ -855,6 +855,17 @@ public class RemoteScheduler implements Scheduler {
         }
     }
 
+    @Override
+    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException {
+        try {
+            getRemoteScheduler().addCalendarInMemory(calName, calendar,
+                    replace, updateTriggers);
+        } catch (RemoteException re) {
+            throw invalidateHandleCreateException(
+                    "Error communicating with remote scheduler.", re);
+        }
+    }
+
     /**
      * <p>
      * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.

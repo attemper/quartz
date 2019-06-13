@@ -876,6 +876,19 @@ public interface Scheduler {
         throws SchedulerException;
 
     /**
+     * Add (register) the given <code>Calendar</code> to the Scheduler.
+     *
+     * @param updateTriggers whether or not to update existing triggers that
+     *                       referenced the already existing calendar so that they are 'correct'
+     *                       based on the new trigger.
+     * @throws SchedulerException if there is an internal Scheduler error, or a Calendar with
+     *                            the same name already exists, and <code>replace</code> is
+     *                            <code>false</code>.
+     */
+    void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
+            throws SchedulerException;
+
+    /**
      * Delete the identified <code>Calendar</code> from the Scheduler.
      * 
      * <p>

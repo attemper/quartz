@@ -2125,7 +2125,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
      * </p>
      */
     public List<OperableTrigger> getTriggersForJob(final JobKey jobKey) throws JobPersistenceException {
-        return (List<OperableTrigger>)executeWithoutLock( // no locks necessary for read...
+        return executeWithoutLock( // no locks necessary for read...
             new TransactionCallback<List<OperableTrigger>>() {
                 public List<OperableTrigger> execute(Connection conn) throws JobPersistenceException {
                     return getTriggersForJob(conn, jobKey);
@@ -2135,7 +2135,7 @@ public abstract class JobStoreSupport implements JobStore, Constants {
     
     protected List<OperableTrigger> getTriggersForJob(Connection conn,
             JobKey key)
-        throws JobPersistenceException {
+            throws JobPersistenceException {
         List<OperableTrigger> list;
 
         try {
@@ -2144,6 +2144,38 @@ public abstract class JobStoreSupport implements JobStore, Constants {
         } catch (Exception e) {
             throw new JobPersistenceException(
                     "Couldn't obtain triggers for job: " + e.getMessage(), e);
+        }
+
+        return list;
+    }
+
+    /**
+     * <p>
+     * Get all of the Triggers that are associated to the given Calendar.
+     * </p>
+     *
+     * <p>
+     * If there are no matches, a zero-length array should be returned.
+     * </p>
+     */
+    public List<OperableTrigger> getTriggersForCalendar(final String calName) throws JobPersistenceException {
+        return executeWithoutLock( // no locks necessary for read...
+                new TransactionCallback<List<OperableTrigger>>() {
+                    public List<OperableTrigger> execute(Connection conn) throws JobPersistenceException {
+                        return getTriggersForCalendar(conn, calName);
+                    }
+                });
+    }
+
+    protected List<OperableTrigger> getTriggersForCalendar(Connection conn, String calName)
+            throws JobPersistenceException {
+        List<OperableTrigger> list;
+
+        try {
+            list = getDelegate().selectTriggersForCalendar(conn, calName);
+        } catch (Exception e) {
+            throw new JobPersistenceException(
+                    "Couldn't obtain triggers for calendar: " + e.getMessage(), e);
         }
 
         return list;

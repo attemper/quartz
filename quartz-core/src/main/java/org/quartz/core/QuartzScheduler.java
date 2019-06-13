@@ -24,6 +24,7 @@ import org.quartz.Trigger.CompletedExecutionInstruction;
 import org.quartz.Trigger.TriggerState;
 import org.quartz.core.jmx.QuartzSchedulerMBean;
 import org.quartz.impl.SchedulerRepository;
+import org.quartz.impl.jdbcjobstore.JobStoreSupport;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.listeners.SchedulerListenerSupport;
 import org.quartz.simpl.PropertySettingJobFactory;
@@ -1590,6 +1591,31 @@ J     *
         validateState();
 
         resources.getJobStore().storeCalendar(calName, calendar, replace, updateTriggers);
+    }
+
+    /**
+     * <p>
+     * Add (register) the given <code>Calendar</code> to the Scheduler.
+     * </p>
+     *
+     * @throws SchedulerException if there is an internal Scheduler error, or a Calendar with
+     *                            the same name already exists, and <code>replace</code> is
+     *                            <code>false</code>.
+     */
+    @Override
+    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException {
+        validateState();
+
+        if (resources.getJobStore() instanceof JobStoreSupport) {
+            if (updateTriggers) {
+                List<OperableTrigger> trigs = resources.getJobStore().getTriggersForCalendar(calName);
+                for (OperableTrigger trigger : trigs) {
+                    trigger.updateWithNewCalendar(calendar, ((JobStoreSupport) resources.getJobStore()).getMisfireThreshold());
+                }
+            }
+        } else {
+            resources.getJobStore().storeCalendar(calName, calendar, replace, updateTriggers);
+        }
     }
 
     /**
