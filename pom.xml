@@ -13,43 +13,7 @@
     can be integrated with, or used along side virtually any J2EE or
     J2SE application
   </description>
-  <url>http://www.quartz-scheduler.org</url>
-  <organization>
-    <name>Terracotta, Inc.</name>
-    <url>http://www.terracotta.org</url>
-  </organization>
-  <licenses>
-    <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <connection>scm:git:git@github.com:quartz-scheduler/quartz.git</connection>
-    <developerConnection>scm:git:git@github.com:quartz-scheduler/quartz.git</developerConnection>
-    <tag/>
-    <url>https://github.com/quartz-scheduler/quartz</url>
-  </scm>
-  <issueManagement>
-    <system>Terracotta's JIRA</system>
-    <url>https://github.com/quartz-scheduler/quartz/issues</url>
-  </issueManagement>
-  <developers>
-    <developer>
-      <id>jhouserizer</id>
-      <name>James House</name>
-      <email>jhouse@terracotta.org</email>
-      <organization>Terracotta</organization>
-      <organizationUrl>http://www.terracotta.org</organizationUrl>
-      <roles>
-        <role>Primary Developer</role>
-      </roles>
-      <timezone>-6</timezone>
-    </developer>
-  </developers>
   <modules>
-    <module>quartz-checkstyle</module>
     <module>quartz-core</module>
     <module>quartz-stubs</module>
     <module>quartz-oracle</module>
@@ -211,18 +175,6 @@
         <groupId>org.subethamail</groupId>
         <artifactId>subethasmtp</artifactId>
         <version>${subethasmtp.version}</version>
-      </dependency>
-
-      <!-- terracotta -->
-      <dependency>
-        <groupId>org.terracotta.toolkit</groupId>
-        <artifactId>terracotta-toolkit-api</artifactId>
-        <version>${terracotta-toolkit-api.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.terracotta.toolkit</groupId>
-        <artifactId>terracotta-toolkit-api-internal</artifactId>
-        <version>${terracotta-toolkit-api-internal.version}</version>
       </dependency>
 
       <dependency>
@@ -525,32 +477,7 @@
       </build>
     </profile>
 
-    <profile>
-      <id>deploy-sonatype</id>
-      <distributionManagement>
-        <snapshotRepository>
-          <id>quartz-snapshots</id>
-          <name>Quartz snapshots at Sonatype Nexus</name>
-          <url>http://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-          <id>quartz-staging</id>
-          <name>Quartz release staging at Sonatype Nexus</name>
-          <url>http://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-      </distributionManagement>
-    </profile>
     <!--
-    <profile>
-      <id>release</id>
-      <distributionManagement>
-        <repository>
-          <id>terracotta-releases</id>
-          <name>Terracotta Releases Repository</name>
-          <url>${terracotta-releases-url}</url>
-        </repository>
-      </distributionManagement>
-    </profile>
     <profile>
       <id>system-tests</id>
       <modules>
@@ -569,41 +496,57 @@
     </profile>
   </profiles>
 
-  <!--
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
+  <url>https://github.com/attemper/${project.artifactId}</url>
+  <organization>
+    <name>Shanghai Stock Exchange</name>
+    <url>http://www.sse.com.cn</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:git:git@github.com:attemper/${project.artifactId}.git</connection>
+    <developerConnection>scm:git:git@github.com:attemper/${project.artifactId}.git</developerConnection>
+    <tag/>
+    <url>https://github.com/attemper/${project.artifactId}</url>
+  </scm>
+  <issueManagement>
+    <system>Issue</system>
+    <url>https://github.com/attemper/${project.artifactId}/issues</url>
+  </issueManagement>
+  <developers>
+    <developer>
+      <id>ldang264</id>
+      <name>Dang Ling</name>
+      <email>ldang@sse.com.cn</email>
+      <organization>Shanghai Stock Exchange</organization>
+      <organizationUrl>http://www.sse.com.cn</organizationUrl>
+      <roles>
+        <role>Primary Developer</role>
+      </roles>
+      <timezone>-6</timezone>
+    </developer>
+  </developers>
+
   <distributionManagement>
-    <repository>
-      <id>terracotta-staging</id>
-      <name>Terracotta Staging Repository</name>
-      <url>${terracotta-staging-url}</url>
-    </repository>
     <snapshotRepository>
-      <id>terracotta-snapshots</id>
-      <uniqueVersion>false</uniqueVersion>
-      <name>Terracotta Snapshots Repository</name>
-      <url>${terracotta-snapshots-url}</url>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Sonatype Nexus Snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
     </snapshotRepository>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <name>Nexus Release Repository</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
   </distributionManagement>
-
-  <repositories>
-    <repository>
-      <id>terracotta-snapshots</id>
-      <url>http://www.terracotta.org/download/reflector/snapshots</url>
-    </repository>
-    <repository>
-      <id>terracotta-releases</id>
-      <url>http://www.terracotta.org/download/reflector/releases</url>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>terracotta-snapshots</id>
-      <url>http://www.terracotta.org/download/reflector/snapshots</url>
-    </pluginRepository>
-    <pluginRepository>
-      <id>terracotta-releases</id>
-      <url>http://www.terracotta.org/download/reflector/releases</url>
-    </pluginRepository>
-  </pluginRepositories>
-  -->
 </project>
