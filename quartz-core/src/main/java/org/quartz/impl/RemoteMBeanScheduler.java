@@ -865,6 +865,16 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
                     Calendar.class.getName(), boolean.class.getName(), boolean.class.getName() });
     }
 
+    @Override
+    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
+            throws SchedulerException {
+        invoke(
+                "addCalendarInMemory",
+                new Object[]{calName, calendar, replace, updateTriggers},
+                new String[]{String.class.getName(),
+                        Calendar.class.getName(), boolean.class.getName(), boolean.class.getName()});
+    }
+
     /**
      * <p>
      * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>,
@@ -959,5 +969,5 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
     public void setJobFactory(JobFactory factory) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
-    
+
 }

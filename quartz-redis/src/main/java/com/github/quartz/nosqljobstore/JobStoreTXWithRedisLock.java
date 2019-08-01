@@ -1,15 +1,18 @@
-package com.sse.quartz;
+package com.github.quartz.nosqljobstore;
 
 import org.quartz.JobPersistenceException;
 import org.quartz.SchedulerConfigException;
-import org.quartz.impl.jdbcjobstore.JobStoreCMT;
+import org.quartz.impl.jdbcjobstore.JobStoreTX;
 import org.quartz.spi.ClassLoadHelper;
 import org.quartz.spi.SchedulerSignaler;
 
 import java.sql.Connection;
 import java.util.UUID;
 
-public class JobStoreCMTWithRedisLock extends JobStoreCMT {
+/**
+ * @author ldang
+ */
+public class JobStoreTXWithRedisLock extends JobStoreTX {
 
     private RedisLockHandler redisLockHandler;
 
@@ -44,31 +47,46 @@ public class JobStoreCMTWithRedisLock extends JobStoreCMT {
     protected long expireInMills = 500;
 
     @Override
-    public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler) throws SchedulerConfigException {
-        super.initialize(loadHelper, signaler);
+    public void initialize(ClassLoadHelper classLoadHelper, SchedulerSignaler schedSignaler) throws SchedulerConfigException {
+        super.initialize(classLoadHelper, schedSignaler);
         redisLockHandler = new RedisLockHandler(host, port, database, password, ssl);
     }
 
     @Override
-    protected <T> T executeInLock(
-            String lockName,
-            TransactionCallback<T> txCallback) throws JobPersistenceException {
+    protected <T> T executeInLock(String lockName, TransactionCallback<T> txCallback) throws JobPersistenceException {
         boolean transOwner = false;
         Connection conn = null;
         String lockValue = null;
         try {
             if (lockName != null) {
-                // If we aren't using db locks, then delay getting DB connection
-                // until after acquiring the lock since it isn't needed.
                 lockValue = UUID.randomUUID().toString();
                 transOwner = redisLockHandler.lock(lockName, lockValue, expireInMills);
             }
 
             if (conn == null) {
-                conn = getConnection();
+                conn = getNonManagedTXConnection();
             }
 
-            return txCallback.execute(conn);
+            final T result = txCallback.execute(conn);
+            try {
+                commitConnection(conn);
+            } catch (JobPersistenceException e) {
+                rollbackConnection(conn);
+            }
+
+            Long sigTime = clearAndGetSignalSchedulingChangeOnTxCompletion();
+            if(sigTime != null && sigTime >= 0) {
+                signalSchedulingChangeImmediately(sigTime);
+            }
+
+            return result;
+        } catch (JobPersistenceException e) {
+            rollbackConnection(conn);
+            throw e;
+        } catch (RuntimeException e) {
+            rollbackConnection(conn);
+            throw new JobPersistenceException("Unexpected runtime exception: "
+                    + e.getMessage(), e);
         } finally {
             try {
                 if (transOwner && lockValue != null) {

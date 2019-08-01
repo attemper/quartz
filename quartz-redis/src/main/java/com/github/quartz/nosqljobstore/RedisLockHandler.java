@@ -1,4 +1,4 @@
-package com.sse.quartz;
+package com.github.quartz.nosqljobstore;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;

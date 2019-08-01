@@ -1,4 +1,4 @@
-package com.sse.quartz;
+package com.github.quartz.nosqljobstore;
 
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
