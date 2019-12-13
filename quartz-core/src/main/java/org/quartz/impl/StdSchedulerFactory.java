@@ -45,6 +45,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.security.AccessControlException;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Properties;
 
@@ -461,18 +462,28 @@ public class StdSchedulerFactory implements SchedulerFactory {
         try {
             sysProps = System.getProperties();
         } catch (AccessControlException e) {
-            getLog().warn(
-                "Skipping overriding quartz properties with System properties " +
-                "during initialization because of an AccessControlException.  " +
-                "This is likely due to not having read/write access for " +
-                "java.util.PropertyPermission as required by java.lang.System.getProperties().  " +
-                "To resolve this warning, either add this permission to your policy file or " +
-                "use a non-default version of initialize().",
-                e);
+            log.warn(
+                    "Skipping overriding quartz properties with System properties " +
+                            "during initialization because of an AccessControlException.  " +
+                            "This is likely due to not having read/write access for " +
+                            "java.util.PropertyPermission as required by java.lang.System.getProperties().  " +
+                            "To resolve this warning, either add this permission to your policy file or " +
+                            "use a non-default version of initialize().",
+                    e);
         }
 
         if (sysProps != null) {
-            props.putAll(sysProps);
+            // Use the propertyNames to iterate to avoid
+            // a possible ConcurrentModificationException
+            Enumeration<?> en = sysProps.propertyNames();
+            while (en.hasMoreElements()) {
+                Object name = en.nextElement();
+                Object value = sysProps.get(name);
+                if (name instanceof String && value instanceof String) {
+                    // Properties javadoc discourages use of put so we use setProperty
+                    props.setProperty((String) name, (String) value);
+                }
+            }
         }
 
         return props;

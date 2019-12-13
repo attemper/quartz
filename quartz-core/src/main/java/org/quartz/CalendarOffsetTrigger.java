@@ -47,7 +47,7 @@ public interface CalendarOffsetTrigger extends Trigger {
     /**
      * <p>Get the interval unit - the time unit on with the interval applies.</p>
      */
-    public IntervalUnit getIntervalUnit();
+    public IntervalUnit getRepeatIntervalUnit();
 
     /**
      * <p>

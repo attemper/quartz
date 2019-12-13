@@ -274,11 +274,6 @@ public class StdScheduler implements Scheduler {
         sched.scheduleJob(jobDetail,  triggersForJob, replace);
     }
 
-    @Override
-    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
-        sched.scheduleJobInMemory(jobDetail, triggersForJob, replace);
-    }
-
     public boolean unscheduleJobs(List<TriggerKey> triggerKeys)
             throws SchedulerException {
         return sched.unscheduleJobs(triggerKeys);
@@ -305,17 +300,6 @@ public class StdScheduler implements Scheduler {
         return sched.unscheduleJob(triggerKey);
     }
 
-    /**
-     * <p>
-     * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
-     * </p>
-     */
-    @Override
-    public boolean unscheduleJobInMemory(TriggerKey triggerKey)
-            throws SchedulerException {
-        return sched.unscheduleJobInMemory(triggerKey);
-    }
-    
     /**
      * <p>
      * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
@@ -550,17 +534,6 @@ public class StdScheduler implements Scheduler {
     public void addCalendar(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
         throws SchedulerException {
         sched.addCalendar(calName, calendar, replace, updateTriggers);
-    }
-
-    /**
-     * <p>
-     * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>.
-     * </p>
-     */
-    @Override
-    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
-            throws SchedulerException {
-        sched.addCalendarInMemory(calName, calendar, replace, updateTriggers);
     }
 
     /**

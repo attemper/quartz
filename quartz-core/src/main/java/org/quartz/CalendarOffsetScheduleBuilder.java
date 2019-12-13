@@ -88,7 +88,7 @@ public class CalendarOffsetScheduleBuilder extends ScheduleBuilder<CalendarOffse
     public MutableTrigger build() {
 
         CalendarOffsetTriggerImpl st = new CalendarOffsetTriggerImpl();
-        st.setIntervalUnit(intervalUnit);
+        st.setRepeatIntervalUnit(intervalUnit);
         st.setMisfireInstruction(misfireInstruction);
         st.setRepeatCount(repeatCount);
         st.setStartTimeOfDay(startTimeOfDay);
