@@ -43,7 +43,7 @@ import org.quartz.impl.calendar.CronCalendar;
  * @author Zemian Deng <saltnlight5@gmail.com>
  */
 public class DailyTimeIntervalTriggerImplTest extends TestCase {
-  
+
   public void testNormalExample() throws Exception {
     Date startTime = dateOf(0, 0, 0, 1, 1, 2011);
     TimeOfDay startTimeOfDay = new TimeOfDay(8, 0, 0);
@@ -239,7 +239,22 @@ public class DailyTimeIntervalTriggerImplTest extends TestCase {
     Assert.assertEquals(dateOf(17, 0, 0, 1, 1, 2011), fireTimes.get(17));
     Assert.assertEquals(dateOf(16, 0, 0, 2, 1, 2011), fireTimes.get(34));
   }
-  
+
+  public void testStartTimeWithEndTimeOfLimitTimes() throws Exception {
+    Date startTime = dateOf(0, 0, 30, 1, 1, 2011);
+    Date endTime = dateOf(0, 1, 30, 1, 1, 2011);
+    TimeOfDay endTimeOfDay = new TimeOfDay(17, 0, 0);
+    DailyTimeIntervalTriggerImpl trigger = new DailyTimeIntervalTriggerImpl();
+    trigger.setStartTime(startTime);
+    trigger.setEndTime(endTime);
+    trigger.setEndTimeOfDay(endTimeOfDay);
+    trigger.setRepeatIntervalUnit(DateBuilder.IntervalUnit.MINUTE);
+    trigger.setRepeatInterval(1);
+
+    List<Date> fireTimes = TriggerUtils.computeFireTimes(trigger, null, 48);
+    Assert.assertEquals(1, fireTimes.size());
+  }
+
   public void testEndTimeAfterEndTimeOfDay() throws Exception {
     Date startTime = dateOf(0, 0, 0, 1, 1, 2011);
     Date endTime = dateOf(18, 0, 0, 2, 1, 2011);

@@ -454,15 +454,6 @@ public interface Scheduler {
     void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException;
 
     /**
-     * Schedule the given job with the related set of triggers.
-     *
-     * <p>If any of the given job or triggers already exist (or more
-     * specifically, if the keys are not unique) and the replace
-     * parameter is not set to true then an exception will be thrown.</p>
-     */
-    void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException;
-
-    /**
      * Remove the indicated <code>{@link Trigger}</code> from the scheduler.
      * 
      * <p>If the related job does not have any other triggers, and the job is
@@ -470,15 +461,6 @@ public interface Scheduler {
      */
     boolean unscheduleJob(TriggerKey triggerKey)
         throws SchedulerException;
-
-    /**
-     * Remove the indicated <code>{@link Trigger}</code> from the scheduler.
-     *
-     * <p>If the related job does not have any other triggers, and the job is
-     * not durable, then the job will also be deleted.</p>
-     */
-    boolean unscheduleJobInMemory(TriggerKey triggerKey)
-            throws SchedulerException;
 
     /**
      * Remove all of the indicated <code>{@link Trigger}</code>s from the scheduler.
@@ -874,19 +856,6 @@ public interface Scheduler {
      */
     void addCalendar(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
         throws SchedulerException;
-
-    /**
-     * Add (register) the given <code>Calendar</code> to the Scheduler.
-     *
-     * @param updateTriggers whether or not to update existing triggers that
-     *                       referenced the already existing calendar so that they are 'correct'
-     *                       based on the new trigger.
-     * @throws SchedulerException if there is an internal Scheduler error, or a Calendar with
-     *                            the same name already exists, and <code>replace</code> is
-     *                            <code>false</code>.
-     */
-    void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
-            throws SchedulerException;
 
     /**
      * Delete the identified <code>Calendar</code> from the Scheduler.

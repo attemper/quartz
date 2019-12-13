@@ -95,8 +95,6 @@ public interface RemotableQuartzScheduler extends Remote {
 
     boolean unscheduleJob(TriggerKey triggerKey) throws SchedulerException, RemoteException;
 
-    boolean unscheduleJobInMemory(TriggerKey triggerKey) throws SchedulerException, RemoteException;
-
     Date rescheduleJob(TriggerKey triggerKey, Trigger newTrigger) throws SchedulerException, RemoteException;
         
     void triggerJob(JobKey jobKey, JobDataMap data) throws SchedulerException, RemoteException;
@@ -145,8 +143,6 @@ public interface RemotableQuartzScheduler extends Remote {
 
     void addCalendar(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException, RemoteException;
 
-    void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException, RemoteException;
-
     boolean deleteCalendar(String calName) throws SchedulerException, RemoteException;
 
     Calendar getCalendar(String calName) throws SchedulerException, RemoteException;
@@ -165,11 +161,7 @@ public interface RemotableQuartzScheduler extends Remote {
 
     void scheduleJobs(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace) throws SchedulerException, RemoteException;
 
-    void scheduleJobsInMemory(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace) throws SchedulerException, RemoteException;
-
     void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException, RemoteException;
-
-    void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException, RemoteException;
 
     boolean unscheduleJobs(List<TriggerKey> triggerKeys) throws SchedulerException, RemoteException;
 }

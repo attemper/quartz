@@ -415,16 +415,6 @@ public class RemoteScheduler implements Scheduler {
         }
     }
 
-    @Override
-    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
-        try {
-            getRemoteScheduler().scheduleJobInMemory(jobDetail, triggersForJob, replace);
-        } catch (RemoteException re) {
-            throw invalidateHandleCreateException(
-                    "Error communicating with remote scheduler.", re);
-        }
-    }
-
     public boolean unscheduleJobs(List<TriggerKey> triggerKeys)
             throws SchedulerException {
         try {
@@ -460,16 +450,6 @@ public class RemoteScheduler implements Scheduler {
         throws SchedulerException {
         try {
             return getRemoteScheduler().unscheduleJob(triggerKey);
-        } catch (RemoteException re) {
-            throw invalidateHandleCreateException(
-                    "Error communicating with remote scheduler.", re);
-        }
-    }
-
-    @Override
-    public boolean unscheduleJobInMemory(TriggerKey triggerKey) throws SchedulerException {
-        try {
-            return getRemoteScheduler().unscheduleJobInMemory(triggerKey);
         } catch (RemoteException re) {
             throw invalidateHandleCreateException(
                     "Error communicating with remote scheduler.", re);
@@ -848,17 +828,6 @@ public class RemoteScheduler implements Scheduler {
         throws SchedulerException {
         try {
             getRemoteScheduler().addCalendar(calName, calendar,
-                    replace, updateTriggers);
-        } catch (RemoteException re) {
-            throw invalidateHandleCreateException(
-                    "Error communicating with remote scheduler.", re);
-        }
-    }
-
-    @Override
-    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException {
-        try {
-            getRemoteScheduler().addCalendarInMemory(calName, calendar,
                     replace, updateTriggers);
         } catch (RemoteException re) {
             throw invalidateHandleCreateException(

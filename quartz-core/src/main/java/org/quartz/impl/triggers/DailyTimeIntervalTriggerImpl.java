@@ -715,8 +715,13 @@ public class DailyTimeIntervalTriggerImpl extends AbstractTrigger<DailyTimeInter
             sTime.add(Calendar.HOUR_OF_DAY, getRepeatInterval() * (int)jumpCount);
             fireTime = sTime.getTime();
         }
-        
-        // g. Ensure this new fireTime is within the day, or else we need to advance to next day.
+
+        // g. Ensure this new fireTime is before than endTime(if exits)
+        if (endTime != null && fireTime.getTime() > endTime.getTime()) {
+            return null;
+        }
+
+        // h. Ensure this new fireTime is within the day, or else we need to advance to next day.
         if (fireTime.after(fireTimeEndDate)) {
           fireTime = advanceToNextDayOfWeekIfNecessary(fireTime, isSameDay(fireTime, fireTimeEndDate));
           // make sure we hit the startTimeOfDay on the new day
