@@ -30,7 +30,7 @@ import org.quartz.spi.OperableTrigger;
  * @see CalendarOffsetScheduleBuilder
  * @see CalendarOffsetTrigger
  * 
- * @since 3.0.0-SNAPSHOT
+ * @since 2.3.2.1
  * 
  * @author ldang <ldang@sse.com.cn>
  */
@@ -49,7 +49,7 @@ public class CalendarOffsetTriggerPersistenceDelegate extends SimplePropertiesTr
         CalendarOffsetTriggerImpl triggerImpl = (CalendarOffsetTriggerImpl)trigger;
         SimplePropertiesTriggerProperties props = new SimplePropertiesTriggerProperties();
         
-        props.setString1(triggerImpl.getIntervalUnit().name());
+        props.setString1(triggerImpl.getRepeatIntervalUnit().name());
         props.setInt1(triggerImpl.getInnerOffset());
         props.setInt2(triggerImpl.getTimesTriggered());
 

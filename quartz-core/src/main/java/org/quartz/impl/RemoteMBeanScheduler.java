@@ -404,22 +404,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
                 new String[] { String.class.getName(), String.class.getName() });
     }
 
-    /**
-     * <p>
-     * Calls the equivalent method on the 'proxied' <code>QuartzScheduler</code>,
-     * passing the <code>SchedulingContext</code> associated with this
-     * instance.
-     * </p>
-     */
-    @Override
-    public boolean unscheduleJobInMemory(TriggerKey triggerKey)
-            throws SchedulerException {
-        return (Boolean) invoke(
-                "unscheduleJobInMemory",
-                new Object[]{triggerKey.getName(), triggerKey.getGroup()},
-                new String[]{String.class.getName(), String.class.getName()});
-    }
-
     public boolean deleteJobs(List<JobKey> jobKeys) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
@@ -430,11 +414,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
 
     @Override
     public void scheduleJob(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
-        throw new SchedulerException("Operation not supported for remote schedulers.");
-    }
-
-    @Override
-    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob, boolean replace) throws SchedulerException {
         throw new SchedulerException("Operation not supported for remote schedulers.");
     }
 
@@ -863,16 +842,6 @@ public abstract class RemoteMBeanScheduler implements Scheduler {
             new Object[] { calName, calendar, replace, updateTriggers },
             new String[] { String.class.getName(), 
                     Calendar.class.getName(), boolean.class.getName(), boolean.class.getName() });
-    }
-
-    @Override
-    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers)
-            throws SchedulerException {
-        invoke(
-                "addCalendarInMemory",
-                new Object[]{calName, calendar, replace, updateTriggers},
-                new String[]{String.class.getName(),
-                        Calendar.class.getName(), boolean.class.getName(), boolean.class.getName()});
     }
 
     /**

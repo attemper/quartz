@@ -43,7 +43,7 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
     //private  int repeatInterval = 0;
 
     // WEEK/MONTH/SEAZON/HALF_YEAR/YEAR
-    private IntervalUnit intervalUnit = IntervalUnit.WEEK;
+    private IntervalUnit repeatIntervalUnit = IntervalUnit.WEEK;
 
     private int timesTriggered = 0;
 
@@ -138,7 +138,7 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
         setStartTime(startTime);
         setEndTime(endTime);
         setStartTimeOfDay(startTimeOfDay);
-        setIntervalUnit(intervalUnit);
+        setRepeatIntervalUnit(intervalUnit);
     }
 
     /**
@@ -164,7 +164,7 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
         setStartTime(startTime);
         setEndTime(endTime);
         setStartTimeOfDay(startTimeOfDay);
-        setIntervalUnit(intervalUnit);
+        setRepeatIntervalUnit(intervalUnit);
     }
 
     /*
@@ -246,21 +246,21 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
     /* (non-Javadoc)
      * @see org.quartz.DateIntervalTriggerI#getIntervalUnit()
      */
-    public IntervalUnit getIntervalUnit() {
-        return intervalUnit;
+    public IntervalUnit getRepeatIntervalUnit() {
+        return repeatIntervalUnit;
     }
 
     /**
      * <p>Set the interval unit - the time unit on with the interval applies.</p>
      */
-    public void setIntervalUnit(IntervalUnit intervalUnit) {
-        if (intervalUnit == null || !(intervalUnit.equals(IntervalUnit.WEEK)
-                || intervalUnit.equals(IntervalUnit.MONTH) || intervalUnit.equals(IntervalUnit.SEASON)
-                || intervalUnit.equals(IntervalUnit.HALF_YEAR) || intervalUnit.equals(IntervalUnit.YEAR))) {
+    public void setRepeatIntervalUnit(IntervalUnit repeatIntervalUnit) {
+        if (repeatIntervalUnit == null || !(repeatIntervalUnit.equals(IntervalUnit.WEEK)
+                || repeatIntervalUnit.equals(IntervalUnit.MONTH) || repeatIntervalUnit.equals(IntervalUnit.SEASON)
+                || repeatIntervalUnit.equals(IntervalUnit.HALF_YEAR) || repeatIntervalUnit.equals(IntervalUnit.YEAR))) {
             throw new IllegalArgumentException("TimeUnit is incorrect," +
-                    "it must be week,month,season,half year or year,but you set " + intervalUnit);
+                    "it must be week,month,season,half year or year,but you set " + repeatIntervalUnit);
         }
-        this.intervalUnit = intervalUnit;
+        this.repeatIntervalUnit = repeatIntervalUnit;
     }
 
     /* (non-Javadoc)
@@ -388,19 +388,19 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
     private Date computeNextPeriod(Date fixedNextFireTime, Calendar calendar) {
         java.util.Calendar sTime = java.util.Calendar.getInstance();
         sTime.setTime(fixedNextFireTime);
-        if(getIntervalUnit().equals(IntervalUnit.WEEK)) {
+        if(repeatIntervalUnit.equals(IntervalUnit.WEEK)) {
             sTime.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.SUNDAY);
             sTime.add(java.util.Calendar.WEEK_OF_YEAR, 1);
-        } else if(getIntervalUnit().equals(IntervalUnit.MONTH)) {
+        } else if(repeatIntervalUnit.equals(IntervalUnit.MONTH)) {
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
             sTime.add(java.util.Calendar.MONTH, 1);
-        } else if(getIntervalUnit().equals(IntervalUnit.SEASON)) {
+        } else if(repeatIntervalUnit.equals(IntervalUnit.SEASON)) {
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
             sTime.add(java.util.Calendar.MONTH, 3);
-        } else if(getIntervalUnit().equals(IntervalUnit.HALF_YEAR)) {
+        } else if(repeatIntervalUnit.equals(IntervalUnit.HALF_YEAR)) {
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
             sTime.add(java.util.Calendar.MONTH, 6);
-        } else if(getIntervalUnit().equals(IntervalUnit.YEAR)) {
+        } else if(repeatIntervalUnit.equals(IntervalUnit.YEAR)) {
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
             sTime.add(java.util.Calendar.YEAR, 1);
         }
@@ -431,21 +431,21 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
         }
         Date lowerDate, upperDate, time;
         List<Date> maybeTriggeredDateList = new ArrayList<Date>();
-        if(getIntervalUnit().equals(IntervalUnit.WEEK)) {
+        if(repeatIntervalUnit.equals(IntervalUnit.WEEK)) {
             sTime.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.SUNDAY);
             lowerDate = getDateWithStartTimeOfDay(sTime);
             sTime.set(java.util.Calendar.DAY_OF_WEEK,  java.util.Calendar.SATURDAY);
             upperDate = getDateWithStartTimeOfDay(sTime);
             maybeTriggeredDateList = createMaybeTriggeredDateList(7, lowerDate, upperDate, calendar);
         }
-        else if(getIntervalUnit().equals(IntervalUnit.MONTH)) {
+        else if(repeatIntervalUnit.equals(IntervalUnit.MONTH)) {
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
             lowerDate = getDateWithStartTimeOfDay(sTime);
             sTime.set(java.util.Calendar.DAY_OF_MONTH, sTime.getActualMaximum(java.util.Calendar.DAY_OF_MONTH));
             upperDate = getDateWithStartTimeOfDay(sTime);
             maybeTriggeredDateList = createMaybeTriggeredDateList(31, lowerDate, upperDate, calendar);
         }
-        else if(getIntervalUnit().equals(IntervalUnit.SEASON)) {
+        else if(repeatIntervalUnit.equals(IntervalUnit.SEASON)) {
             int season = sTime.get(java.util.Calendar.MONTH)/3; // 0,1,2,3
             sTime.set(java.util.Calendar.MONTH, season * 3);
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
@@ -455,7 +455,7 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
             upperDate = getDateWithStartTimeOfDay(sTime);
             maybeTriggeredDateList = createMaybeTriggeredDateList(92, lowerDate, upperDate, calendar);
         }
-        else if(getIntervalUnit().equals(IntervalUnit.HALF_YEAR)) {
+        else if(repeatIntervalUnit.equals(IntervalUnit.HALF_YEAR)) {
             int half = sTime.get(java.util.Calendar.MONTH)/6; // 0,1
             sTime.set(java.util.Calendar.MONTH, half * 6);
             sTime.set(java.util.Calendar.DAY_OF_MONTH, 1);
@@ -465,14 +465,14 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
             upperDate = getDateWithStartTimeOfDay(sTime);
             maybeTriggeredDateList = createMaybeTriggeredDateList(184, lowerDate, upperDate, calendar);
         }
-        else if(getIntervalUnit().equals(IntervalUnit.YEAR)) {
+        else if(repeatIntervalUnit.equals(IntervalUnit.YEAR)) {
             sTime.set(java.util.Calendar.DAY_OF_YEAR, 1);
             lowerDate = getDateWithStartTimeOfDay(sTime);
             sTime.set(java.util.Calendar.DAY_OF_YEAR, sTime.getActualMaximum(java.util.Calendar.DAY_OF_YEAR));
             upperDate = getDateWithStartTimeOfDay(sTime);;
             maybeTriggeredDateList = createMaybeTriggeredDateList(366, lowerDate, upperDate, calendar);
         } else {
-            throw new IllegalArgumentException("TimeUnit is illegal:" + getIntervalUnit().toString());
+            throw new IllegalArgumentException("TimeUnit is illegal:" + repeatIntervalUnit.toString());
         }
         if (maybeTriggeredDateList.isEmpty() || maybeTriggeredDateList.size() <= innerOffset) {
             return computeNextPeriod(sTime.getTime(), calendar);
@@ -571,7 +571,7 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
     public ScheduleBuilder<CalendarOffsetTrigger> getScheduleBuilder() {
 
         CalendarOffsetScheduleBuilder cb = CalendarOffsetScheduleBuilder.calendarOffsetSchedule()
-                .withIntervalUnit(getIntervalUnit()).startingDailyAt(getStartTimeOfDay());
+                .withIntervalUnit(repeatIntervalUnit).startingDailyAt(getStartTimeOfDay());
 
         switch(getMisfireInstruction()) {
             case MISFIRE_INSTRUCTION_DO_NOTHING : cb.withMisfireHandlingInstructionDoNothing();
@@ -676,15 +676,15 @@ public class CalendarOffsetTriggerImpl extends AbstractTrigger<CalendarOffsetTri
     }
 
     public void setInnerOffset(int innerOffset) {
-        if (getIntervalUnit().equals(IntervalUnit.WEEK) && innerOffset >= 7) {
+        if (repeatIntervalUnit.equals(IntervalUnit.WEEK) && innerOffset >= 7) {
             throw new IllegalArgumentException("Inner offset must be < 7");
-        } else if (getIntervalUnit().equals(IntervalUnit.MONTH) && innerOffset >= 31) {
+        } else if (repeatIntervalUnit.equals(IntervalUnit.MONTH) && innerOffset >= 31) {
             throw new IllegalArgumentException("Inner offset must be < 31");
-        } else if (getIntervalUnit().equals(IntervalUnit.SEASON) && innerOffset >= 92) {
+        } else if (repeatIntervalUnit.equals(IntervalUnit.SEASON) && innerOffset >= 92) {
             throw new IllegalArgumentException("Inner offset must be < 92");
-        } else if (getIntervalUnit().equals(IntervalUnit.HALF_YEAR) && innerOffset >= 184) {
+        } else if (repeatIntervalUnit.equals(IntervalUnit.HALF_YEAR) && innerOffset >= 184) {
             throw new IllegalArgumentException("Inner offset must be < 184");
-        } else if (getIntervalUnit().equals(IntervalUnit.YEAR) && innerOffset >= 366) {
+        } else if (repeatIntervalUnit.equals(IntervalUnit.YEAR) && innerOffset >= 366) {
             throw new IllegalArgumentException("Inner offset must be < 366");
         }
         this.innerOffset = innerOffset;

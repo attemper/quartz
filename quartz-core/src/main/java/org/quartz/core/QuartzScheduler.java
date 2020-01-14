@@ -964,12 +964,6 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
         notifyJobs(triggersAndJobs);
     }
 
-    @Override
-    public void scheduleJobsInMemory(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs, boolean replace) throws SchedulerException {
-        validateTriggers(triggersAndJobs);
-        notifyJobs(triggersAndJobs);
-    }
-
     private void notifyJobs(Map<JobDetail, Set<? extends Trigger>> triggersAndJobs) {
         notifySchedulerThread(0L);
         for (JobDetail job : triggersAndJobs.keySet()) {
@@ -1025,14 +1019,6 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
         scheduleJobs(triggersAndJobs, replace);
     }
 
-    @Override
-    public void scheduleJobInMemory(JobDetail jobDetail, Set<? extends Trigger> triggersForJob,
-                                    boolean replace) throws SchedulerException {
-        Map<JobDetail, Set<? extends Trigger>> triggersAndJobs = new HashMap<JobDetail, Set<? extends Trigger>>();
-        triggersAndJobs.put(jobDetail, triggersForJob);
-        scheduleJobsInMemory(triggersAndJobs, replace);
-    }
-
     public boolean unscheduleJobs(List<TriggerKey> triggerKeys) throws SchedulerException  {
         validateState();
 
@@ -1061,22 +1047,6 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
         } else {
             return false;
         }
-
-        return true;
-    }
-
-    /**
-     * <p>
-     * Remove the indicated <code>{@link org.quartz.Trigger}</code> from the
-     * scheduler.
-     * </p>
-     */
-    @Override
-    public boolean unscheduleJobInMemory(TriggerKey triggerKey) throws SchedulerException {
-        validateState();
-
-        notifySchedulerThread(0L);
-        notifySchedulerListenersUnscheduled(triggerKey);
 
         return true;
     }
@@ -1591,31 +1561,6 @@ J     *
         validateState();
 
         resources.getJobStore().storeCalendar(calName, calendar, replace, updateTriggers);
-    }
-
-    /**
-     * <p>
-     * Add (register) the given <code>Calendar</code> to the Scheduler.
-     * </p>
-     *
-     * @throws SchedulerException if there is an internal Scheduler error, or a Calendar with
-     *                            the same name already exists, and <code>replace</code> is
-     *                            <code>false</code>.
-     */
-    @Override
-    public void addCalendarInMemory(String calName, Calendar calendar, boolean replace, boolean updateTriggers) throws SchedulerException {
-        validateState();
-
-        if (resources.getJobStore() instanceof JobStoreSupport) {
-            if (updateTriggers) {
-                List<OperableTrigger> trigs = resources.getJobStore().getTriggersForCalendar(calName);
-                for (OperableTrigger trigger : trigs) {
-                    trigger.updateWithNewCalendar(calendar, ((JobStoreSupport) resources.getJobStore()).getMisfireThreshold());
-                }
-            }
-        } else {
-            resources.getJobStore().storeCalendar(calName, calendar, replace, updateTriggers);
-        }
     }
 
     /**

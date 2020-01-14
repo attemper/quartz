@@ -5,7 +5,7 @@
 
   <groupId>com.github.attemper</groupId>
   <artifactId>quartz</artifactId>
-  <version>2.3.2.2</version>
+  <version>2.3.2.2-SNAPSHOT</version>
   <name>quartz</name>
   <packaging>pom</packaging>
 
@@ -45,7 +45,6 @@
     <hamcrest-library.version>1.2</hamcrest-library.version>
     <mockito-all.version>1.9.5</mockito-all.version>
     <asm.version>3.2</asm.version>
-    <jboss.version>4.0.2</jboss.version>
     <mail.version>1.4.7</mail.version>
     <subethasmtp.version>3.1.7</subethasmtp.version>
     <terracotta-toolkit-api.version>2.5</terracotta-toolkit-api.version>
@@ -67,6 +66,25 @@
     <maven.release.plugin.version>2.5.3</maven.release.plugin.version>
     <maven.gpg.plugin.version>1.6</maven.gpg.plugin.version>
   </properties>
+
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Sonatype Nexus Snapshots</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    </snapshotRepository>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <name>Nexus Release Repository</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
   <dependencyManagement>
     <dependencies>
@@ -149,38 +167,10 @@
         <version>${derby-version}</version>
       </dependency>
 
-      <!-- jboss -->
-      <dependency>
-        <groupId>jboss</groupId>
-        <artifactId>jboss-common</artifactId>
-        <version>${jboss.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>jboss</groupId>
-        <artifactId>jboss-minimal</artifactId>
-        <version>${jboss.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>jboss</groupId>
-        <artifactId>jboss-system</artifactId>
-        <version>${jboss.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>jboss</groupId>
-        <artifactId>jboss-jmx</artifactId>
-        <version>${jboss.version}</version>
-      </dependency>
-
       <dependency>
         <groupId>javax.mail</groupId>
         <artifactId>mail</artifactId>
         <version>${mail.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.subethamail</groupId>
-        <artifactId>subethasmtp</artifactId>
-        <version>${subethasmtp.version}</version>
       </dependency>
 
       <dependency>
@@ -543,57 +533,4 @@
     </profile>
   </profiles>
 
-  <parent>
-    <groupId>org.sonatype.oss</groupId>
-    <artifactId>oss-parent</artifactId>
-    <version>7</version>
-  </parent>
-  <url>https://github.com/attemper/${project.artifactId}</url>
-  <organization>
-    <name>Shanghai Stock Exchange</name>
-    <url>http://www.sse.com.cn</url>
-  </organization>
-  <licenses>
-    <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <connection>scm:git:git@github.com:attemper/${project.artifactId}.git</connection>
-    <developerConnection>scm:git:git@github.com:attemper/${project.artifactId}.git</developerConnection>
-    <tag/>
-    <url>https://github.com/attemper/${project.artifactId}</url>
-  </scm>
-  <issueManagement>
-    <system>Issue</system>
-    <url>https://github.com/attemper/${project.artifactId}/issues</url>
-  </issueManagement>
-  <developers>
-    <developer>
-      <id>ldang264</id>
-      <name>Dang Ling</name>
-      <email>ldang@sse.com.cn</email>
-      <organization>Shanghai Stock Exchange</organization>
-      <organizationUrl>http://www.sse.com.cn</organizationUrl>
-      <roles>
-        <role>Primary Developer</role>
-      </roles>
-      <timezone>-6</timezone>
-    </developer>
-  </developers>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
-      <name>Sonatype Nexus Snapshots</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-    </snapshotRepository>
-    <repository>
-      <id>sonatype-nexus-staging</id>
-      <name>Nexus Release Repository</name>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
 </project>

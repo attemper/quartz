@@ -20,7 +20,7 @@ import java.util.List;
 
     public void test() throws Exception {
         CalendarOffsetTriggerImpl trigger = new CalendarOffsetTriggerImpl();
-        trigger.setIntervalUnit(DateBuilder.IntervalUnit.WEEK);
+        trigger.setRepeatIntervalUnit(DateBuilder.IntervalUnit.WEEK);
         trigger.setStartTimeOfDay(new TimeOfDay(11, 56, 23));
         trigger.setInnerOffset(2);
         HolidayCalendar holidayCalendar = new HolidayCalendar();
