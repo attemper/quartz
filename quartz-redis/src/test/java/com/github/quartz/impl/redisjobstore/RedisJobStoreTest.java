@@ -32,7 +32,7 @@ public class RedisJobStoreTest {
     }
 
     @Test
-    public void testStoreJob() throws SchedulerException {
+    public void testAddJob() throws SchedulerException {
         JobKey jobKey = new JobKey("job1", "group1");
         JobDetail oldValue = JobBuilder.newJob(HelloJob.class)
                 .withIdentity(jobKey)
@@ -52,5 +52,37 @@ public class RedisJobStoreTest {
         Assert.assertEquals(oldValue.requestsRecovery(), newValue.requestsRecovery());
         Assert.assertEquals(oldValue.isConcurrentExectionDisallowed(), newValue.isConcurrentExectionDisallowed());
         Assert.assertEquals(oldValue.isPersistJobDataAfterExecution(), newValue.isPersistJobDataAfterExecution());
+        boolean delResult = scheduler.deleteJob(jobKey);
+        Assert.assertTrue(delResult);
+        JobDetail deletedValue = scheduler.getJobDetail(jobKey);
+        Assert.assertNull(deletedValue);
     }
+
+    @Test
+    public void testDeleteNonExistentJob() throws SchedulerException {
+        JobKey jobKey = new JobKey(String.valueOf(Math.random()), String.valueOf(Math.random()));
+        boolean delResult = scheduler.deleteJob(jobKey);
+        Assert.assertFalse(delResult);
+    }
+
+    @Test
+    public void testSchedulerJobOfCronTrigger() throws SchedulerException {
+        JobKey jobKey = new JobKey("job1", "group1");
+        TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
+        JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
+                .withIdentity(jobKey)
+                .usingJobData("name", "quartz")
+                .usingJobData("pi", 3.1415926)
+                .withDescription("测试")
+                .storeDurably(true)
+                .requestRecovery(true)
+                .build();
+        Trigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
+                .withSchedule(CronScheduleBuilder.cronSchedule("0/10 * * * * ?"))
+                .withDescription("cron表达式触发器")
+                .build();
+        scheduler.scheduleJob(jobDetail, trigger);
+        scheduler.unscheduleJob(triggerKey);
+    }
+
 }

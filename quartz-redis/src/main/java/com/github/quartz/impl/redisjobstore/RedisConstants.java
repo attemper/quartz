@@ -43,7 +43,7 @@ public interface RedisConstants extends Constants {
      * 0 schedName
      * 1 jobName
      * 2 groupName
-     * value trigger_name
+     * value triggerName groupName
      */
     String KEY_JOB_TRIGGERS = "job_triggers@{0}#{1}${2}";
 
@@ -89,7 +89,7 @@ public interface RedisConstants extends Constants {
      * set
      * 0 schedName
      * 1 calendarName
-     * value groupName###triggerName
+     * value triggerName groupName
      */
     String KEY_CALENDAR_TRIGGERS = "calendar_triggers@{0}#{1}";
 

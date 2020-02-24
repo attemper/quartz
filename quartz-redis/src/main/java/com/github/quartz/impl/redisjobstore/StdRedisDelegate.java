@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.*;
 
-public class StdRedisDelegate implements RedisConstants {
+public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     /*
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -304,6 +304,10 @@ public class StdRedisDelegate implements RedisConstants {
 
     protected String hget(String key, String field) {
         return redisHashCommands.hget(key, field);
+    }
+
+    protected List<KeyValue<String, String>> hmget(String key, String... fields) {
+        return redisHashCommands.hmget(key, fields);
     }
 
     protected int hdel(String key, String... fields) {
@@ -665,11 +669,12 @@ public class StdRedisDelegate implements RedisConstants {
      * org.quartz.utils.Key}</code> objects
      */
     public List<TriggerKey> selectTriggerKeysForJob(JobKey jobKey) {
-        Set<String> triggerNames = smembers(keyOfJobTriggers(jobKey));
         LinkedList<TriggerKey> list = new LinkedList<TriggerKey>();
 
-        for (String triggerName : triggerNames) {
-            list.add(new TriggerKey(triggerName, jobKey.getGroup()));
+        Set<String> groupWithNames = smembers(keyOfJobTriggers(jobKey));
+        for (String item : groupWithNames) {
+            String[] array = splitValue(item);
+            list.add(new TriggerKey(array[0], array[1]));
         }
         return list;
     }
@@ -682,8 +687,11 @@ public class StdRedisDelegate implements RedisConstants {
      * @return the number of rows deleted
      */
     public long deleteJobDetail(JobKey jobKey) {
-        srem(keyOfJobTriggers(jobKey));
-        hdel(keyOfJob(jobKey));
+        String kjt = keyOfJobTriggers(jobKey);
+        if (exists(kjt)) {
+            srem(kjt);
+        }
+        del(keyOfJob(jobKey));
         return srem(keyOfJobs(), joinValue(jobKey));
     }
 
@@ -833,6 +841,7 @@ public class StdRedisDelegate implements RedisConstants {
     public void updateTrigger(OperableTrigger trigger, String state, JobDetail job) {
         Map<String, String> triggerMap = Helper.getObjectMapper()
                 .convertValue(trigger, new TypeReference<HashMap<String, String>>() {});
+
         long prevFireTime = -1;
         if (trigger.getPreviousFireTime() != null) {
             prevFireTime = trigger.getPreviousFireTime().getTime();
@@ -856,7 +865,7 @@ public class StdRedisDelegate implements RedisConstants {
         }
         triggerMap.put(COL_END_TIME, String.valueOf(endTime));
         hmset(keyOfTrigger(trigger.getKey()), triggerMap);
-        sadd(keyOfJobTriggers(job.getKey()), trigger.getKey().getName());
+        sadd(keyOfJobTriggers(job.getKey()), joinValue(trigger.getKey()));
         if (STATE_WAITING.equals(state) && trigger.getNextFireTime() != null) {
             zadd(keyOfWaitTriggers(),
                     trigger.getNextFireTime().getTime(),
@@ -1053,16 +1062,18 @@ public class StdRedisDelegate implements RedisConstants {
      */
     public void updateTriggerStatesForJob(JobKey jobKey,
                                          String state) {
-        Set<String> triggerNames = smembers(keyOfJobTriggers(jobKey));
-        for (String triggerName : triggerNames) {
-            updateTriggerState(new TriggerKey(triggerName, jobKey.getGroup()), state);
+        Set<String> groupWithNames = smembers(keyOfJobTriggers(jobKey));
+        for (String item : groupWithNames) {
+            String[] array = splitValue(item);
+            updateTriggerState(new TriggerKey(array[0], array[1]), state);
         }
     }
 
     public void updateTriggerStatesForJobFromOtherState(JobKey jobKey, String state, String oldState) {
-        Set<String> triggerNames = smembers(keyOfJobTriggers(jobKey));
-        for (String triggerName : triggerNames) {
-            updateTriggerStateFromOtherState(new TriggerKey(triggerName, jobKey.getGroup()), state, oldState);
+        Set<String> groupWithNames = smembers(keyOfJobTriggers(jobKey));
+        for (String item : groupWithNames) {
+            String[] array = splitValue(item);
+            updateTriggerStateFromOtherState(new TriggerKey(array[0], array[1]), state, oldState);
         }
     }
 
@@ -1074,10 +1085,20 @@ public class StdRedisDelegate implements RedisConstants {
      * @return the number of rows deleted
      */
     public long deleteTrigger(TriggerKey triggerKey) {
-        hdel(keyOfTrigger(triggerKey));
         String value = joinValue(triggerKey);
-        zrem(keyOfWaitTriggers(), value);
-        return srem(keyOfTriggers(), value);
+        List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_JOB_NAME, FIELD_JOB_GROUP);
+        String jobName = null, jobGroup = null;
+        for (KeyValue<String, String> keyValue : keyValues) {
+            if (FIELD_JOB_NAME.equals(keyValue.getKey())) {
+                jobName = keyValue.getValue();
+            } else if (FIELD_JOB_GROUP.equals(keyValue.getKey())) {
+                jobGroup = keyValue.getValue();
+            }
+        }
+        srem(keyOfJobTriggers(new JobKey(jobName, jobGroup)), value);  // remove trigger in job-triggers
+        del(keyOfTrigger(triggerKey)); // remove trigger
+        zrem(keyOfWaitTriggers(), value); // remove waiting triggers
+        return srem(keyOfTriggers(), value); // remove trigger in triggers
     }
 
     /**
@@ -1116,44 +1137,10 @@ public class StdRedisDelegate implements RedisConstants {
      * @throws ClassNotFoundException
      */
     public JobDetail selectJobForTrigger(TriggerKey triggerKey, boolean loadJobClass) throws ClassNotFoundException {
-        String jobName = hget(keyOfTrigger(triggerKey), COL_JOB_NAME);
+        String jobName = hget(keyOfTrigger(triggerKey), FIELD_JOB_NAME);
         Map<String, String> jobDetailMap = hgetall(keyOfJob(new JobKey(jobName, triggerKey.getGroup())));
         JobDetailImpl job = Helper.getObjectMapper().convertValue(jobDetailMap, JobDetailImpl.class);
-        if (loadJobClass) {
-            job.setJobClass(loadHelper.loadClass(jobDetailMap.get(COL_JOB_CLASS), Job.class));
-        }
-
         return job;
-
-        /*PreparedStatement ps = null;
-        ResultSet rs = null;
-
-        try {
-            ps = conn.prepareStatement(rtp(SELECT_JOB_FOR_TRIGGER));
-            ps.setString(1, triggerKey.getName());
-            ps.setString(2, triggerKey.getGroup());
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                JobDetailImpl job = new JobDetailImpl();
-                job.setName(rs.getString(1));
-                job.setGroup(rs.getString(2));
-                job.setDurability(getBoolean(rs, 3));
-                if (loadJobClass)
-                    job.setJobClass(loadHelper.loadClass(rs.getString(4), Job.class));
-                job.setRequestsRecovery(getBoolean(rs, 5));
-
-                return job;
-            } else {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("No job for trigger '" + triggerKey + "'.");
-                }
-                return null;
-            }
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
-        }*/
     }
 
     /**
@@ -1167,9 +1154,11 @@ public class StdRedisDelegate implements RedisConstants {
     public List<OperableTrigger> selectTriggersForJob(JobKey jobKey) {
 
         LinkedList<OperableTrigger> trigList = new LinkedList<OperableTrigger>();
-        Set<String> triggerNames = smembers(keyOfJobTriggers(jobKey));
-        for (String triggerName : triggerNames) {
-            OperableTrigger t = selectTrigger(new TriggerKey(triggerName, jobKey.getGroup()));
+
+        Set<String> groupWithNames = smembers(keyOfJobTriggers(jobKey));
+        for (String item : groupWithNames) {
+            String[] array = splitValue(item);
+            OperableTrigger t = selectTrigger(new TriggerKey(array[0], array[1]));
             if(t != null) {
                 trigList.add(t);
             }
@@ -1185,7 +1174,7 @@ public class StdRedisDelegate implements RedisConstants {
         Set<String> triggerGroupWithNames = smembers(keyOfCalendarTriggers(calName));
         for (String groupWithName : triggerGroupWithNames) {
             String[] array = splitValue(groupWithName);
-            trigList.add(selectTrigger(new TriggerKey(array[1], array[0])));
+            trigList.add(selectTrigger(new TriggerKey(array[0], array[1])));
         }
         return trigList;
     }

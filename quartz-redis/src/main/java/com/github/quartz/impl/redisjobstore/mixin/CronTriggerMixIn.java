@@ -4,17 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.quartz.CronExpression;
 
-public abstract class CronTriggerMixIn extends TriggerMixIn {
+public abstract class CronTriggerMixIn extends TriggerMixIn implements FieldConstants {
     @JsonIgnore
     public abstract String getExpressionSummary();
 
     @JsonIgnore
     public abstract void setCronExpression(CronExpression cron);
 
-    @JsonProperty("cronExpression")
+    @JsonProperty(FIELD_CRON_EXPRESSION)
     public abstract void setCronExpression(String cronExpression);
 
-    @JsonProperty("cronExpression")
+    @JsonProperty(FIELD_CRON_EXPRESSION)
     public abstract String getCronExpression();
 
 }

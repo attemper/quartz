@@ -3,8 +3,8 @@ package com.github.quartz.impl.redisjobstore.mixin;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.deser.impl.BeanAsArrayDeserializer;
-import com.fasterxml.jackson.databind.ser.impl.BeanAsArraySerializer;
+import com.github.quartz.impl.redisjobstore.jackson.ObjectDeserializer;
+import com.github.quartz.impl.redisjobstore.jackson.ObjectSerializer;
 import org.quartz.*;
 
 import java.util.Date;
@@ -17,10 +17,10 @@ public abstract class TriggerMixIn {
     @JsonIgnore
     public abstract JobKey getJobKey();
 
-    @JsonSerialize(using = BeanAsArraySerializer.class)
+    @JsonSerialize(using = ObjectSerializer.class)
     public abstract void setJobDataMap(JobDataMap jobDataMap);
 
-    @JsonDeserialize(using = BeanAsArrayDeserializer.class)
+    @JsonDeserialize(using = ObjectDeserializer.class)
     public abstract JobDataMap getJobDataMap();
 
     @JsonIgnore

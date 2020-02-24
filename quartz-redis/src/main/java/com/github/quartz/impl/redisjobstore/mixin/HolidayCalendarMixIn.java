@@ -11,7 +11,6 @@ public class HolidayCalendarMixIn {
     @JsonProperty
     private TreeSet<Date> dates;
 
-
     @JsonIgnore
     public SortedSet<Date> getExcludedDates() {
         return null;
