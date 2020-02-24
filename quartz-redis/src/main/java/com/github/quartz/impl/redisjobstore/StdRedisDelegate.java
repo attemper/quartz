@@ -2,6 +2,7 @@ package com.github.quartz.impl.redisjobstore;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.quartz.impl.redisjobstore.delegate.*;
+import com.github.quartz.impl.redisjobstore.mixin.FieldConstants;
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.sync.*;
@@ -649,8 +650,10 @@ public class StdRedisDelegate implements RedisConstants {
      */
     public void updateJobDetail(JobDetail job) {
         String keyOfJobDetail = keyOfJob(job.getKey());
-        hmset(keyOfJobDetail, Helper.getObjectMapper()
-                .convertValue(job, new TypeReference<HashMap<String, String>>() {}));
+        Map<String, String> map = Helper.getObjectMapper()
+                .convertValue(job, new TypeReference<HashMap<String, String>>() {});
+        map.put(FieldConstants.FIELD_REQUESTS_RECOVERY, String.valueOf(job.requestsRecovery()));
+        hmset(keyOfJobDetail, map);
     }
 
     /**

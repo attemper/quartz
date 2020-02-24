@@ -10,7 +10,7 @@ import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 
-public abstract class JobDetailMixIn {
+public abstract class JobDetailMixIn implements FieldConstants {
 
     @JsonIgnore
     public abstract JobKey getKey();
@@ -22,10 +22,10 @@ public abstract class JobDetailMixIn {
     public abstract JobDataMap getJobDataMap();
 
     @JsonIgnore
-    public abstract JobBuilder getJobBuilder();
-
-    @JsonIgnore
     public abstract String getFullName();
+
+    @JsonProperty(FIELD_DURABLE)
+    public abstract void setDurability(boolean d);
 
     @JsonIgnore
     public abstract boolean isPersistJobDataAfterExecution();
@@ -33,10 +33,9 @@ public abstract class JobDetailMixIn {
     @JsonIgnore
     public abstract boolean isConcurrentExectionDisallowed();
 
-    @JsonProperty("durable")
-    public abstract void setDurability(boolean d);
+    @JsonProperty(FIELD_REQUESTS_RECOVERY)
+    public abstract boolean requestsRecovery();
 
-    @JsonProperty("requestsRecovery")
-    public abstract void setRequestsRecovery(boolean shouldRecover);
-
+    @JsonIgnore
+    public abstract JobBuilder getJobBuilder();
 }

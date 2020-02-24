@@ -1,4 +1,4 @@
-package com.github.quartz.nosqljobstore;
+package com.github.quartz.impl.redisjobstore;
 
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
