@@ -1,9 +1,13 @@
 package com.github.quartz.impl.redisjobstore;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
 import com.github.quartz.impl.redisjobstore.constant.RedisConstants;
 import com.github.quartz.impl.redisjobstore.delegate.*;
+import com.github.quartz.impl.redisjobstore.mixin.*;
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.sync.*;
@@ -11,6 +15,7 @@ import org.quartz.Calendar;
 import org.quartz.*;
 import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.calendar.BaseCalendar;
+import org.quartz.impl.calendar.HolidayCalendar;
 import org.quartz.impl.jdbcjobstore.FiredTriggerRecord;
 import org.quartz.impl.jdbcjobstore.NoSuchDelegateException;
 import org.quartz.impl.jdbcjobstore.TriggerStatus;
@@ -39,8 +44,6 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     protected String instanceId;
 
-    protected ClassLoadHelper loadHelper;
-
     protected List<TriggerTypeDelegate> triggerTypeDelegates = new LinkedList<TriggerTypeDelegate>();
 
     protected AbstractRedisClient redisClient;
@@ -61,7 +64,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     protected RedisServerCommands<String, String> redisServerCommands;
 
-    private static long TIME_MILLS_2099 = DateBuilder.dateOf(0, 0, 0, 1, 1, 2099).getTime();
+    protected ObjectMapper objectMapper;
 
     /*
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,7 +83,8 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         this.logger = logger;
         this.schedName = schedName;
         this.instanceId = instanceId;
-        this.loadHelper = classLoadHelper;
+
+        initJackson(classLoadHelper);
         addDefaultTriggerTypeDelegates();
 
         if(initString == null)
@@ -110,6 +114,18 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
             else
                 throw new NoSuchDelegateException("Unknown setting: '" + name + "'");
         }
+    }
+
+    protected void initJackson(ClassLoadHelper loadHelper) {
+        objectMapper = new ObjectMapper()
+                .addMixIn(CronTrigger.class, CronTriggerMixIn.class)
+                .addMixIn(SimpleTrigger.class, TriggerMixIn.class)
+                .addMixIn(JobDetail.class, JobDetailMixIn.class)
+                .addMixIn(HolidayCalendar.class, HolidayCalendarMixIn.class)
+                .addMixIn(FiredTriggerRecord.class, FiredTriggerRecordMixIn.class)
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.setTypeFactory(objectMapper.getTypeFactory().withClassLoader(loadHelper.getClassLoader()));
     }
 
     protected void addDefaultTriggerTypeDelegates() {
@@ -664,7 +680,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public void updateJobDetail(JobDetail job) {
         String keyOfJobDetail = keyOfJob(job.getKey());
-        Map<String, String> map = Helper.getObjectMapper()
+        Map<String, String> map = objectMapper
                 .convertValue(job, new TypeReference<HashMap<String, String>>() {});
         map.put(FieldConstants.FIELD_REQUESTS_RECOVERY, String.valueOf(job.requestsRecovery()));
         hmset(keyOfJobDetail, map);
@@ -728,8 +744,8 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     public void updateJobData(JobDetail job)
             throws IOException {
         JobDataMap jobDataMap = job.getJobDataMap();
-        String s = Helper.getObjectMapper().convertValue(jobDataMap, String.class);
-        hset(keyOfJob(job.getKey()), COL_JOB_DATAMAP, s);
+        String s = objectMapper.convertValue(jobDataMap, String.class);
+        hset(keyOfJob(job.getKey()), FIELD_JOB_DATA_MAP, s);
     }
 
     /**
@@ -745,7 +761,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
             return null;
         }
         Map<String, String> jobDetailMap = hgetall(keyOfJob(jobKey));
-        return Helper.getObjectMapper().convertValue(jobDetailMap, JobDetailImpl.class);
+        return objectMapper.convertValue(jobDetailMap, JobDetailImpl.class);
     }
 
     /**
@@ -849,7 +865,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return the number of rows inserted
      */
     public void updateTrigger(OperableTrigger trigger, String state, JobDetail job) {
-        Map<String, String> triggerMap = Helper.getObjectMapper()
+        Map<String, String> triggerMap = objectMapper
                 .convertValue(trigger, new TypeReference<HashMap<String, String>>() {});
 
         TriggerTypeDelegate tDel = findTriggerTypeDelegate(trigger);
@@ -961,7 +977,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public boolean updateTriggerState(TriggerKey triggerKey,
                                   String state) {
-        return hset(keyOfTrigger(triggerKey), COL_TRIGGER_STATE, state);
+        return hset(keyOfTrigger(triggerKey), FIELD_STATE, state);
     }
 
     /**
@@ -983,10 +999,10 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     protected int updateTriggerStateFromOtherStates(TriggerKey triggerKey, String newState, String oldState1,
                                                  String oldState2, String oldState3) {
         String keyOfTrigger = keyOfTrigger(triggerKey);
-        String triggerState = hget(keyOfTrigger, COL_TRIGGER_STATE);
+        String triggerState = hget(keyOfTrigger, FIELD_STATE);
         if (triggerState != null && (triggerState.equals(oldState1) ||
                 triggerState.equals(oldState2) || triggerState.equals(oldState3))) {
-            hset(keyOfTrigger, COL_TRIGGER_STATE, newState);
+            hset(keyOfTrigger, FIELD_STATE, newState);
             return 1;
         }
         return 0;
@@ -1032,9 +1048,9 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public int updateTriggerStateFromOtherState(TriggerKey triggerKey, String newState, String oldState) {
         String keyOfTrigger = keyOfTrigger(triggerKey);
-        String triggerState = hget(keyOfTrigger, COL_TRIGGER_STATE);
+        String triggerState = hget(keyOfTrigger, FIELD_STATE);
         if (triggerState != null && triggerState.equals(oldState)) {
-            hset(keyOfTrigger, COL_TRIGGER_STATE, newState);
+            hset(keyOfTrigger, FIELD_STATE, newState);
             return 1;
         }
         return 0;
@@ -1141,7 +1157,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     public JobDetail selectJobForTrigger(TriggerKey triggerKey, boolean loadJobClass) throws ClassNotFoundException {
         String jobName = hget(keyOfTrigger(triggerKey), FIELD_JOB_NAME);
         Map<String, String> jobDetailMap = hgetall(keyOfJob(new JobKey(jobName, triggerKey.getGroup())));
-        JobDetailImpl job = Helper.getObjectMapper().convertValue(jobDetailMap, JobDetailImpl.class);
+        JobDetailImpl job = objectMapper.convertValue(jobDetailMap, JobDetailImpl.class);
         return job;
     }
 
@@ -1196,7 +1212,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         if(tDel == null)
             throw new JobPersistenceException("No TriggerPersistenceDelegate for trigger discriminator type: " + type);
         Class<? extends OperableTrigger> triggerClass = tDel.getTriggerClass();
-        OperableTrigger operableTrigger = Helper.getObjectMapper().convertValue(triggerMap, triggerClass);
+        OperableTrigger operableTrigger = objectMapper.convertValue(triggerMap, triggerClass);
         return operableTrigger;
         /**
         PreparedStatement ps = null;
@@ -1316,7 +1332,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return the <code>{@link org.quartz.Trigger}</code> object
      */
     public String selectTriggerState(TriggerKey triggerKey) {
-        String state = hget(keyOfTrigger(triggerKey), COL_TRIGGER_STATE);
+        String state = hget(keyOfTrigger(triggerKey), FIELD_STATE);
         return (state != null ? state : STATE_DELETED).intern();
     }
 
@@ -1329,10 +1345,10 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public TriggerStatus selectTriggerStatus(TriggerKey triggerKey) {
         Map<String, String> triggerMap = hgetall(keyOfTrigger(triggerKey));
-        String state = triggerMap.get(COL_TRIGGER_STATE);
-        long nextFireTime = Long.parseLong(triggerMap.get(COL_NEXT_FIRE_TIME));
-        String jobName = triggerMap.get(COL_JOB_NAME);
-        String jobGroup = triggerMap.get(COL_JOB_GROUP);
+        String state = triggerMap.get(FIELD_STATE);
+        long nextFireTime = Long.parseLong(triggerMap.get(FIELD_NEXT_FIRE_TIME));
+        String jobName = triggerMap.get(FIELD_JOB_NAME);
+        String jobGroup = triggerMap.get(FIELD_JOB_GROUP);
 
         Date nft = null;
         if (nextFireTime > 0) {
@@ -1441,7 +1457,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public String updateCalendar(String calendarName,
                               Calendar calendar) throws IOException {
-        String calendarInfo = Helper.getObjectMapper().writeValueAsString(calendar);
+        String calendarInfo = objectMapper.writeValueAsString(calendar);
         return set(keyOfCalendar(calendarName), calendarInfo);
     }
 
@@ -1494,7 +1510,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     public Calendar selectCalendar(String calendarName)
             throws ClassNotFoundException, IOException {
         String calendarInfo = get(keyOfCalendar(calendarName));
-        return Helper.getObjectMapper().readValue(calendarInfo, BaseCalendar.class);
+        return objectMapper.readValue(calendarInfo, BaseCalendar.class);
         /*PreparedStatement ps = null;
         ResultSet rs = null;
         try {
@@ -1618,8 +1634,8 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *          the state that the trigger should be stored in
      */
     public void insertFiredTrigger(OperableTrigger trigger,
-                                  String state, JobDetail job) {
-        updateFiredTrigger(trigger, state, job);
+                                  String state) {
+        updateFiredTrigger(trigger, state);
         sadd(keyOfFiredJobs(), trigger.getFireInstanceId());
     }
 
@@ -1634,27 +1650,18 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *          the state that the trigger should be stored in
      */
     public void updateFiredTrigger(OperableTrigger trigger,
-                                  String state, JobDetail job) {
+                                  String state) {
         Map<String, String> map = new HashMap<>();
-        //map.put(COL_ENTRY_ID, trigger.getFireInstanceId());
-        map.put(COL_TRIGGER_NAME, trigger.getKey().getName());
-        map.put(COL_TRIGGER_GROUP, trigger.getKey().getGroup());
-        map.put(COL_INSTANCE_NAME, instanceId);
-        map.put(COL_FIRED_TIME, String.valueOf(System.currentTimeMillis()));
-        map.put(COL_SCHED_TIME, String.valueOf(trigger.getNextFireTime().getTime()));
-        map.put(COL_ENTRY_STATE, state);
-        if (job != null) {
-            map.put(COL_JOB_NAME, trigger.getJobKey().getName());
-            map.put(COL_JOB_GROUP, trigger.getJobKey().getGroup());
-            map.put(COL_IS_NONCONCURRENT, String.valueOf(job.isConcurrentExectionDisallowed()));
-            map.put(COL_REQUESTS_RECOVERY, String.valueOf(job.requestsRecovery()));
-        } else {
-            map.put(COL_JOB_NAME, null);
-            map.put(COL_JOB_GROUP, null);
-            map.put(COL_IS_NONCONCURRENT, String.valueOf(false));
-            map.put(COL_REQUESTS_RECOVERY, String.valueOf(false));
-        }
-        map.put(COL_PRIORITY, String.valueOf(trigger.getPriority()));
+        map.put(FIELD_ENTRY_ID, trigger.getFireInstanceId());
+        map.put(FIELD_TRIGGER_NAME, trigger.getKey().getName());
+        map.put(FIELD_TRIGGER_GROUP, trigger.getKey().getGroup());
+        map.put(FIELD_INSTANCE_ID, instanceId);
+        map.put(FIELD_FIRED_TIME, String.valueOf(System.currentTimeMillis()));
+        map.put(FIELD_SCHED_TIME, String.valueOf(trigger.getNextFireTime().getTime()));
+        map.put(FIELD_STATE, state);
+        map.put(FIELD_JOB_NAME, trigger.getJobKey().getName());
+        map.put(FIELD_JOB_GROUP, trigger.getJobKey().getGroup());
+        map.put(FIELD_PRIORITY, String.valueOf(trigger.getPriority()));
         hmset(keyOfFiredJob(trigger.getFireInstanceId()), map);
     }
 
@@ -1718,8 +1725,8 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
         Set<String> entryIds = smembers(keyOfFiredJobs());
         for (String entryId : entryIds) {
-            Map<String, String> hgetall = hgetall(keyOfFiredJob(entryId));
-            FiredTriggerRecord record = Helper.getObjectMapper().convertValue(hgetall, FiredTriggerRecord.class);
+            Map<String, String> firedJobMap = hgetall(keyOfFiredJob(entryId));
+            FiredTriggerRecord record = objectMapper.convertValue(firedJobMap, FiredTriggerRecord.class);
             lst.add(record);
         }
 

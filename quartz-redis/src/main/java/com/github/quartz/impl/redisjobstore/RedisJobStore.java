@@ -470,8 +470,6 @@ public class RedisJobStore implements JobStore, RedisConstants {
                     .setRedisServerCommands(sync);
         }
 
-        Helper.getObjectMapper().setTypeFactory(
-                Helper.getObjectMapper().getTypeFactory().withClassLoader(loadHelper.getClassLoader()));
     }
 
     /**
@@ -1934,7 +1932,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
                         continue; // next trigger
                     }
                     nextTrigger.setFireInstanceId(getFiredTriggerRecordId());
-                    getDelegate().insertFiredTrigger(nextTrigger, STATE_ACQUIRED, null);
+                    getDelegate().insertFiredTrigger(nextTrigger, STATE_ACQUIRED);
 
                     if(acquiredTriggers.isEmpty()) {
                         batchEnd = Math.max(nextFireTime.getTime(), System.currentTimeMillis()) + timeWindow;
@@ -2063,7 +2061,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
             if (cal == null) { return null; }
         }
 
-        getDelegate().updateFiredTrigger(trigger, STATE_EXECUTING, job);
+        getDelegate().updateFiredTrigger(trigger, STATE_EXECUTING);
 
         Date prevFireTime = trigger.getPreviousFireTime();
 

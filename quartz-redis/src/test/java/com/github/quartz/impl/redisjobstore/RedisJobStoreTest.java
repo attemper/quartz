@@ -1,7 +1,6 @@
 package com.github.quartz.impl.redisjobstore;
 
 import junit.framework.Assert;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.quartz.*;
@@ -17,7 +16,7 @@ public class RedisJobStoreTest {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Properties properties = new Properties();
-        properties.put("org.quartz.scheduler.instanceName", "MyRedisScheduler");
+        properties.put("org.quartz.scheduler.instanceName", "MyRedisTestScheduler");
         properties.put("org.quartz.jobStore.class", "com.github.quartz.impl.redisjobstore.RedisJobStore");
 
         properties.put("org.quartz.scheduler.instanceId", "AUTO");
@@ -95,10 +94,5 @@ public class RedisJobStoreTest {
         Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
         Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
         Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
-    }
-
-    @AfterClass
-    public static void afterClass() throws Exception {
-
     }
 }

@@ -28,7 +28,6 @@ public class MainUsingDb {
         SchedulerFactory sf = new StdSchedulerFactory(properties);
         Scheduler scheduler = sf.getScheduler();
         scheduler.clear();
-        scheduler.start();
 
         JobKey jobKey = new JobKey("job1", "group1");
         TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
@@ -45,6 +44,7 @@ public class MainUsingDb {
                 .withDescription("cron表达式触发器")
                 .build();
         scheduler.scheduleJob(jobDetail, trigger);
+        scheduler.start();
     }
 
 }
