@@ -1,5 +1,6 @@
 package com.github.quartz.impl.redisjobstore;
 
+import com.github.quartz.impl.redisjobstore.constant.RedisConstants;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;

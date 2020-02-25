@@ -15,4 +15,9 @@ public class CronTriggerTypeDelegate implements TriggerTypeDelegate, StdJDBCCons
     public String getHandledTriggerTypeDiscriminator() {
         return TTYPE_CRON;
     }
+
+    @Override
+    public Class<? extends OperableTrigger> getTriggerClass() {
+        return CronTriggerImpl.class;
+    }
 }

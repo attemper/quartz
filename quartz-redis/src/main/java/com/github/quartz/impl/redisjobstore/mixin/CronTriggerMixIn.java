@@ -2,6 +2,7 @@ package com.github.quartz.impl.redisjobstore.mixin;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
 import org.quartz.CronExpression;
 
 public abstract class CronTriggerMixIn extends TriggerMixIn implements FieldConstants {

@@ -17,4 +17,8 @@ public class DailyTimeIntervalTriggerTypeDelegate implements TriggerTypeDelegate
         return TTYPE_DAILY_TIME_INT;
     }
 
+    @Override
+    public Class<? extends OperableTrigger> getTriggerClass() {
+        return DailyTimeIntervalTriggerImpl.class;
+    }
 }

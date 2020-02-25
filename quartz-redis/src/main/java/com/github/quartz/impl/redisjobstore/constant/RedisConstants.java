@@ -1,4 +1,4 @@
-package com.github.quartz.impl.redisjobstore;
+package com.github.quartz.impl.redisjobstore.constant;
 
 import org.quartz.impl.jdbcjobstore.Constants;
 

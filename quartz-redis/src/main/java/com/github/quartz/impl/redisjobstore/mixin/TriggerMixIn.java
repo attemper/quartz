@@ -1,15 +1,17 @@
 package com.github.quartz.impl.redisjobstore.mixin;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
 import com.github.quartz.impl.redisjobstore.jackson.ObjectDeserializer;
 import com.github.quartz.impl.redisjobstore.jackson.ObjectSerializer;
 import org.quartz.*;
 
 import java.util.Date;
 
-public abstract class TriggerMixIn {
+public abstract class TriggerMixIn implements FieldConstants {
 
     @JsonIgnore
     public abstract TriggerKey getKey();
@@ -26,11 +28,20 @@ public abstract class TriggerMixIn {
     @JsonIgnore
     public abstract boolean mayFireAgain();
 
-    @JsonIgnore
+    @JsonProperty(FIELD_START_TIME)
+    public abstract void setStartTime(Date startTime);
+
+    @JsonProperty(FIELD_START_TIME)
     public abstract Date getStartTime();
 
-    @JsonIgnore
+    @JsonProperty(FIELD_END_TIME)
+    public abstract void setEndTime(Date startTime);
+
+    @JsonProperty(FIELD_END_TIME)
     public abstract Date getEndTime();
+
+    @JsonProperty(FIELD_PREV_FIRE_TIME)
+    public abstract Date getPreviousFireTime();
 
     @JsonIgnore
     public abstract Date getFinalFireTime();

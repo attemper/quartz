@@ -16,4 +16,8 @@ public class SimpleTriggerTypeDelegate implements TriggerTypeDelegate, StdJDBCCo
         return TTYPE_SIMPLE;
     }
 
+    @Override
+    public Class<? extends OperableTrigger> getTriggerClass() {
+        return SimpleTriggerImpl.class;
+    }
 }

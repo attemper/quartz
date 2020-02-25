@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
 import com.github.quartz.impl.redisjobstore.jackson.ObjectDeserializer;
 import com.github.quartz.impl.redisjobstore.jackson.ObjectSerializer;
 import org.quartz.JobBuilder;

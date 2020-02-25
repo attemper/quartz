@@ -16,4 +16,9 @@ public class CalendarIntervalTriggerTypeDelegate implements TriggerTypeDelegate,
         return TTYPE_CAL_INT;
     }
 
+    @Override
+    public Class<? extends OperableTrigger> getTriggerClass() {
+        return CalendarIntervalTriggerImpl.class;
+    }
+
 }

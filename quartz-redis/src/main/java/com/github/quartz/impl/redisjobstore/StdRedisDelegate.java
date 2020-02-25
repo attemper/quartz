@@ -1,8 +1,9 @@
 package com.github.quartz.impl.redisjobstore;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
+import com.github.quartz.impl.redisjobstore.constant.RedisConstants;
 import com.github.quartz.impl.redisjobstore.delegate.*;
-import com.github.quartz.impl.redisjobstore.mixin.FieldConstants;
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulConnection;
 import io.lettuce.core.api.sync.*;
@@ -387,6 +388,15 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     protected TriggerTypeDelegate findTriggerTypeDelegate(OperableTrigger trigger)  {
         for(TriggerTypeDelegate delegate: triggerTypeDelegates) {
             if(delegate.canHandleTriggerType(trigger))
+                return delegate;
+        }
+
+        return null;
+    }
+
+    public TriggerTypeDelegate findTriggerTypeDelegate(String discriminator)  {
+        for(TriggerTypeDelegate delegate: triggerTypeDelegates) {
+            if(delegate.getHandledTriggerTypeDiscriminator().equals(discriminator))
                 return delegate;
         }
 
@@ -842,13 +852,6 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         Map<String, String> triggerMap = Helper.getObjectMapper()
                 .convertValue(trigger, new TypeReference<HashMap<String, String>>() {});
 
-        long prevFireTime = -1;
-        if (trigger.getPreviousFireTime() != null) {
-            prevFireTime = trigger.getPreviousFireTime().getTime();
-        }
-        triggerMap.put(COL_PREV_FIRE_TIME, String.valueOf(prevFireTime));
-        triggerMap.put(COL_TRIGGER_STATE, state);
-
         TriggerTypeDelegate tDel = findTriggerTypeDelegate(trigger);
         String type;
         if(tDel != null) {
@@ -856,14 +859,21 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         } else {
             type = TTYPE_BLOB;
         }
-        triggerMap.put(COL_TRIGGER_TYPE, type);
+        triggerMap.put(FIELD_STATE, state);
+        triggerMap.put(FIELD_TYPE, type);
+        long prevFireTime = -1;
+        if (trigger.getPreviousFireTime() != null) {
+            prevFireTime = trigger.getPreviousFireTime().getTime();
+        }
+        triggerMap.put(FIELD_PREV_FIRE_TIME, String.valueOf(prevFireTime));
+        /*
         triggerMap.put(COL_START_TIME, String.valueOf(trigger
                 .getStartTime().getTime()));
         long endTime = 0;
         if (trigger.getEndTime() != null) {
             endTime = trigger.getEndTime().getTime();
         }
-        triggerMap.put(COL_END_TIME, String.valueOf(endTime));
+        triggerMap.put(COL_END_TIME, String.valueOf(endTime));*/
         hmset(keyOfTrigger(trigger.getKey()), triggerMap);
         sadd(keyOfJobTriggers(job.getKey()), joinValue(trigger.getKey()));
         if (STATE_WAITING.equals(state) && trigger.getNextFireTime() != null) {
@@ -1087,15 +1097,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     public long deleteTrigger(TriggerKey triggerKey) {
         String value = joinValue(triggerKey);
         List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_JOB_NAME, FIELD_JOB_GROUP);
-        String jobName = null, jobGroup = null;
-        for (KeyValue<String, String> keyValue : keyValues) {
-            if (FIELD_JOB_NAME.equals(keyValue.getKey())) {
-                jobName = keyValue.getValue();
-            } else if (FIELD_JOB_GROUP.equals(keyValue.getKey())) {
-                jobGroup = keyValue.getValue();
-            }
-        }
-        srem(keyOfJobTriggers(new JobKey(jobName, jobGroup)), value);  // remove trigger in job-triggers
+        srem(keyOfJobTriggers(new JobKey(keyValues.get(0).getValue(), keyValues.get(1).getValue())), value);  // remove trigger in job-triggers
         del(keyOfTrigger(triggerKey)); // remove trigger
         zrem(keyOfWaitTriggers(), value); // remove waiting triggers
         return srem(keyOfTriggers(), value); // remove trigger in triggers
@@ -1151,7 +1153,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return an array of <code>(@link org.quartz.Trigger)</code> objects
      *         associated with a given job.
      */
-    public List<OperableTrigger> selectTriggersForJob(JobKey jobKey) {
+    public List<OperableTrigger> selectTriggersForJob(JobKey jobKey) throws JobPersistenceException {
 
         LinkedList<OperableTrigger> trigList = new LinkedList<OperableTrigger>();
 
@@ -1187,10 +1189,15 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return the <code>{@link org.quartz.Trigger}</code> object
      * @throws JobPersistenceException
      */
-    public OperableTrigger selectTrigger(TriggerKey triggerKey) {
+    public OperableTrigger selectTrigger(TriggerKey triggerKey) throws JobPersistenceException {
         Map<String, String> triggerMap = hgetall(keyOfTrigger(triggerKey));
-        String type = triggerMap.get(COL_TRIGGER_TYPE);
-        return null;
+        String type = triggerMap.get(FIELD_TYPE);
+        TriggerTypeDelegate tDel = findTriggerTypeDelegate(type);
+        if(tDel == null)
+            throw new JobPersistenceException("No TriggerPersistenceDelegate for trigger discriminator type: " + type);
+        Class<? extends OperableTrigger> triggerClass = tDel.getTriggerClass();
+        OperableTrigger operableTrigger = Helper.getObjectMapper().convertValue(triggerMap, triggerClass);
+        return operableTrigger;
         /**
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1590,10 +1597,9 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
             if (i < maxCount) {
                 String[] array = splitValue(groupWithTriggerNames.get(i));
                 TriggerKey triggerKey = new TriggerKey(array[0], array[1]);
-                Map<String, String> triggerMap = hgetall(keyOfTrigger(triggerKey));
-                String misInstStr = triggerMap.get(COL_MISFIRE_INSTRUCTION);
-                String nextFireTimeStr = triggerMap.get(COL_NEXT_FIRE_TIME);
-                if ("-1".equals(misInstStr) || (nextFireTimeStr != null && Long.parseLong(nextFireTimeStr) >= noEarlierThan)) {
+                List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_MISFIRE_INSTRUCTION, FIELD_NEXT_FIRE_TIME);
+                if ("-1".equals(keyValues.get(0).getValue())
+                        || (keyValues.get(1).getValue() != null && Long.parseLong(keyValues.get(1).getValue()) >= noEarlierThan)) {
                     nextTriggers.add(triggerKey);
                 }
             }

@@ -17,4 +17,8 @@ public class CalendarOffsetTriggerTypeDelegate implements TriggerTypeDelegate, S
         return TTYPE_CAL_OFFSET;
     }
 
+    @Override
+    public Class<? extends OperableTrigger> getTriggerClass() {
+        return CalendarOffsetTriggerImpl.class;
+    }
 }

@@ -8,4 +8,6 @@ public interface TriggerTypeDelegate {
 
     String getHandledTriggerTypeDiscriminator();
 
+    Class<? extends OperableTrigger> getTriggerClass();
+
 }
