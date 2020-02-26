@@ -68,7 +68,7 @@ public class RedisJobStoreTest {
     }
 
     @Test
-    public void testSchedulerJobOfCronTrigger() throws SchedulerException {
+    public void testSchedulerJobByCronTrigger() throws SchedulerException {
         JobKey jobKey = new JobKey("job1", "group1");
         TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
         JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
@@ -80,7 +80,10 @@ public class RedisJobStoreTest {
                 .requestRecovery(true)
                 .build();
         CronTrigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
-                .withSchedule(CronScheduleBuilder.cronSchedule("0/10 * * * * ?").inTimeZone(TimeZone.getTimeZone("America/Los_Angeles")))
+                .withSchedule(
+                        CronScheduleBuilder.cronSchedule("0/10 * * * * ?")
+                                .inTimeZone(TimeZone.getTimeZone("America/Los_Angeles"))
+                                .withMisfireHandlingInstructionIgnoreMisfires())
                 .withDescription("cron表达式触发器")
                 .build();
         scheduler.scheduleJob(jobDetail, trigger);
@@ -88,11 +91,83 @@ public class RedisJobStoreTest {
         Assert.assertEquals(trigger.getKey(), newValue.getKey());
         Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
         Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
-        Assert.assertEquals(trigger.getCronExpression(), newValue.getCronExpression());
-        Assert.assertEquals(trigger.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(trigger.getMisfireInstruction(), newValue.getMisfireInstruction());
         Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
         Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
         Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
+
+        Assert.assertEquals(trigger.getCronExpression(), newValue.getCronExpression());
+        Assert.assertEquals(trigger.getTimeZone(), newValue.getTimeZone());
+    }
+
+    @Test
+    public void testSchedulerJobBySimpleTrigger() throws SchedulerException {
+        JobKey jobKey = new JobKey("job1", "group1");
+        TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
+        JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
+                .withIdentity(jobKey)
+                .usingJobData("name", "quartz")
+                .usingJobData("pi", 3.1415926)
+                .withDescription("测试")
+                .storeDurably(false)
+                .requestRecovery(true)
+                .build();
+        SimpleTrigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
+                .withSchedule(
+                        SimpleScheduleBuilder.simpleSchedule()
+                                .withIntervalInSeconds(10)
+                                .withRepeatCount(5)
+                                .withMisfireHandlingInstructionNowWithExistingCount())
+                .withDescription("simple触发器")
+                .build();
+        scheduler.scheduleJob(jobDetail, trigger);
+        SimpleTrigger newValue = (SimpleTrigger) scheduler.getTrigger(triggerKey);
+        Assert.assertEquals(trigger.getKey(), newValue.getKey());
+        Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
+        Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
+        Assert.assertEquals(trigger.getMisfireInstruction(), newValue.getMisfireInstruction());
+        Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
+        Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
+        Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
+
+        Assert.assertEquals(trigger.getRepeatCount(), newValue.getRepeatCount());
+        Assert.assertEquals(trigger.getRepeatInterval(), newValue.getRepeatInterval());
+    }
+
+    @Test
+    public void testSchedulerJobByDailyTimeIntervalTrigger() throws SchedulerException {
+        JobKey jobKey = new JobKey("job1", "group1");
+        TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
+        JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
+                .withIdentity(jobKey)
+                .usingJobData("name", "quartz")
+                .usingJobData("pi", 3.1415926)
+                .withDescription("测试")
+                .storeDurably(false)
+                .requestRecovery(true)
+                .build();
+        DailyTimeIntervalTrigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
+                .withSchedule(
+                        DailyTimeIntervalScheduleBuilder.dailyTimeIntervalSchedule()
+                                .startingDailyAt(TimeOfDay.hourMinuteAndSecondOfDay(1, 1, 1))
+                                .endingDailyAt(TimeOfDay.hourMinuteAndSecondOfDay(2, 2, 2))
+                                .onDaysOfTheWeek(1, 3, 5)
+                                .withMisfireHandlingInstructionFireAndProceed()
+                                .withIntervalInSeconds(10)
+                                .withRepeatCount(5))
+                .withDescription("simple触发器")
+                .build();
+        scheduler.scheduleJob(jobDetail, trigger);
+        SimpleTrigger newValue = (SimpleTrigger) scheduler.getTrigger(triggerKey);
+        Assert.assertEquals(trigger.getKey(), newValue.getKey());
+        Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
+        Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
+        Assert.assertEquals(trigger.getMisfireInstruction(), newValue.getMisfireInstruction());
+        Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
+        Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
+        Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
+
+        Assert.assertEquals(trigger.getRepeatCount(), newValue.getRepeatCount());
+        Assert.assertEquals(trigger.getRepeatInterval(), newValue.getRepeatInterval());
     }
 }

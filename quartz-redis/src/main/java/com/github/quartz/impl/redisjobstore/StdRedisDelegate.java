@@ -118,9 +118,10 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     protected void initJackson(ClassLoadHelper loadHelper) {
         objectMapper = new ObjectMapper()
+                .addMixIn(JobDetail.class, JobDetailMixIn.class)
                 .addMixIn(CronTrigger.class, CronTriggerMixIn.class)
                 .addMixIn(SimpleTrigger.class, TriggerMixIn.class)
-                .addMixIn(JobDetail.class, JobDetailMixIn.class)
+                .addMixIn(DailyTimeIntervalTrigger.class, DailyTimeIntervalTriggerMixIn.class)
                 .addMixIn(HolidayCalendar.class, HolidayCalendarMixIn.class)
                 .addMixIn(FiredTriggerRecord.class, FiredTriggerRecordMixIn.class)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
