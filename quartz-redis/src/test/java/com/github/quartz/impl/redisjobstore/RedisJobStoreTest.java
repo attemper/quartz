@@ -158,7 +158,7 @@ public class RedisJobStoreTest {
                 .withDescription("simple触发器")
                 .build();
         scheduler.scheduleJob(jobDetail, trigger);
-        SimpleTrigger newValue = (SimpleTrigger) scheduler.getTrigger(triggerKey);
+        DailyTimeIntervalTrigger newValue = (DailyTimeIntervalTrigger) scheduler.getTrigger(triggerKey);
         Assert.assertEquals(trigger.getKey(), newValue.getKey());
         Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
         Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
@@ -169,5 +169,91 @@ public class RedisJobStoreTest {
 
         Assert.assertEquals(trigger.getRepeatCount(), newValue.getRepeatCount());
         Assert.assertEquals(trigger.getRepeatInterval(), newValue.getRepeatInterval());
+        Assert.assertEquals(trigger.getDaysOfWeek(), newValue.getDaysOfWeek());
+        Assert.assertEquals(trigger.getStartTimeOfDay(), newValue.getStartTimeOfDay());
+        Assert.assertEquals(trigger.getEndTimeOfDay(), newValue.getEndTimeOfDay());
     }
+
+    @Test
+    public void testSchedulerJobByCalendarIntervalTrigger() throws SchedulerException {
+        JobKey jobKey = new JobKey("job1", "group1");
+        TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
+        JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
+                .withIdentity(jobKey)
+                .usingJobData("name", "quartz")
+                .usingJobData("pi", 3.1415926)
+                .withDescription("测试")
+                .storeDurably(false)
+                .requestRecovery(true)
+                .build();
+        CalendarIntervalTrigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
+                .withSchedule(
+                        CalendarIntervalScheduleBuilder.calendarIntervalSchedule()
+                                .inTimeZone(TimeZone.getTimeZone("America/Los_Angeles"))
+                                .skipDayIfHourDoesNotExist(true)
+                                .preserveHourOfDayAcrossDaylightSavings(true)
+                                .withMisfireHandlingInstructionFireAndProceed()
+                                .withIntervalInDays(10)
+                                .withRepeatCount(5))
+                .withDescription("simple触发器")
+                .build();
+        scheduler.scheduleJob(jobDetail, trigger);
+        CalendarIntervalTrigger newValue = (CalendarIntervalTrigger) scheduler.getTrigger(triggerKey);
+        Assert.assertEquals(trigger.getKey(), newValue.getKey());
+        Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
+        Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
+        Assert.assertEquals(trigger.getMisfireInstruction(), newValue.getMisfireInstruction());
+        Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
+        Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
+        Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
+
+        Assert.assertEquals(trigger.getRepeatCount(), newValue.getRepeatCount());
+        Assert.assertEquals(trigger.getRepeatInterval(), newValue.getRepeatInterval());
+        Assert.assertEquals(trigger.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(trigger.isSkipDayIfHourDoesNotExist(), newValue.isSkipDayIfHourDoesNotExist());
+        Assert.assertEquals(trigger.isPreserveHourOfDayAcrossDaylightSavings(), newValue.isPreserveHourOfDayAcrossDaylightSavings());
+    }
+
+    @Test
+    public void testSchedulerJobByCalendarOffsetTrigger() throws SchedulerException {
+        JobKey jobKey = new JobKey("job1", "group1");
+        TriggerKey triggerKey = new TriggerKey("trigger1", "group1");
+        JobDetail jobDetail = JobBuilder.newJob(HelloJob.class)
+                .withIdentity(jobKey)
+                .usingJobData("name", "quartz")
+                .usingJobData("pi", 3.1415926)
+                .withDescription("测试")
+                .storeDurably(false)
+                .requestRecovery(true)
+                .build();
+        CalendarOffsetTrigger trigger = TriggerBuilder.newTrigger().withIdentity(triggerKey)
+                .withSchedule(
+                        CalendarOffsetScheduleBuilder.calendarOffsetSchedule()
+                                .startingDailyAt(TimeOfDay.hourMinuteAndSecondOfDay(1, 1, 1))
+                                .withInnerOffset(1)
+                                .withOuterOffset(1)
+                                .withIntervalUnitOfWeek()
+                                .reversed(true)
+                                .withMisfireHandlingInstructionFireAndProceed()
+                                .withRepeatCount(5))
+                .withDescription("simple触发器")
+                .build();
+        scheduler.scheduleJob(jobDetail, trigger);
+        CalendarOffsetTrigger newValue = (CalendarOffsetTrigger) scheduler.getTrigger(triggerKey);
+        Assert.assertEquals(trigger.getKey(), newValue.getKey());
+        Assert.assertEquals(trigger.getDescription(), newValue.getDescription());
+        Assert.assertEquals(trigger.getJobDataMap(), newValue.getJobDataMap());
+        Assert.assertEquals(trigger.getMisfireInstruction(), newValue.getMisfireInstruction());
+        Assert.assertEquals(trigger.getPriority(), newValue.getPriority());
+        Assert.assertEquals(trigger.getStartTime(), newValue.getStartTime());
+        Assert.assertEquals(trigger.getEndTime(), newValue.getEndTime());
+
+        Assert.assertEquals(trigger.getRepeatCount(), newValue.getRepeatCount());
+        Assert.assertEquals(trigger.getStartTimeOfDay(), newValue.getStartTimeOfDay());
+        Assert.assertEquals(trigger.getInnerOffset(), newValue.getInnerOffset());
+        Assert.assertEquals(trigger.getOuterOffset(), newValue.getOuterOffset());
+        Assert.assertEquals(trigger.getRepeatIntervalUnit(), newValue.getRepeatIntervalUnit());
+        Assert.assertEquals(trigger.isReversed(), newValue.isReversed());
+    }
+
 }
