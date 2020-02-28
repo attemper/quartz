@@ -5,6 +5,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.calendar.HolidayCalendar;
 
 import java.util.Properties;
 import java.util.TimeZone;
@@ -256,4 +257,21 @@ public class RedisJobStoreTest {
         Assert.assertEquals(trigger.isReversed(), newValue.isReversed());
     }
 
+    @Test
+    public void testAddHolidayCalendar() throws SchedulerException {
+        String calName = "holiday";
+        HolidayCalendar calendar_10_01 = new HolidayCalendar();
+        calendar_10_01.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 10, 2020));
+        HolidayCalendar calendar_01_01 = new HolidayCalendar(calendar_10_01);
+        calendar_01_01.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 1, 2020));
+        calendar_01_01.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        calendar_01_01.setDescription("2020年节假日");
+        scheduler.addCalendar(calName, calendar_01_01, true, false);
+        HolidayCalendar newValue = (HolidayCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(calendar_01_01.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(calendar_01_01.getExcludedDates(), newValue.getExcludedDates());
+        Assert.assertEquals(calendar_01_01.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(calendar_01_01.getDescription(), newValue.getDescription());
+    }
 }
