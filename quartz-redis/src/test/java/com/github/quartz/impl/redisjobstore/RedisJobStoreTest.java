@@ -5,7 +5,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
-import org.quartz.impl.calendar.HolidayCalendar;
+import org.quartz.impl.calendar.*;
 
 import java.util.Properties;
 import java.util.TimeZone;
@@ -25,7 +25,7 @@ public class RedisJobStoreTest {
         properties.put("org.quartz.threadPool.threadCount", "25");
         properties.put("org.quartz.threadPool.threadPriority", "5");
         properties.put("org.quartz.jobStore.misfireThreshold", "60000");
-        properties.put("org.quartz.jobStore.isClustered", true);
+        properties.put("org.quartz.jobStore.isClustered", false);
         properties.put("org.quartz.jobStore.clusterCheckinInterval", "20000");
 
         SchedulerFactory sf = new StdSchedulerFactory(properties);
@@ -260,18 +260,110 @@ public class RedisJobStoreTest {
     @Test
     public void testAddHolidayCalendar() throws SchedulerException {
         String calName = "holiday";
-        HolidayCalendar calendar_10_01 = new HolidayCalendar();
-        calendar_10_01.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 10, 2020));
-        HolidayCalendar calendar_01_01 = new HolidayCalendar(calendar_10_01);
-        calendar_01_01.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 1, 2020));
-        calendar_01_01.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
-        calendar_01_01.setDescription("2020年节假日");
-        scheduler.addCalendar(calName, calendar_01_01, true, false);
+        HolidayCalendar wrapperCal = new HolidayCalendar();
+        wrapperCal.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 10, 2020));
+        HolidayCalendar quartzCal = new HolidayCalendar(wrapperCal);
+        quartzCal.addExcludedDate(DateBuilder.dateOf(0, 0, 0, 1, 1, 2020));
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("2020年节假日");
+        scheduler.addCalendar(calName, quartzCal, true, false);
         HolidayCalendar newValue = (HolidayCalendar) scheduler.getCalendar(calName);
 
-        Assert.assertEquals(calendar_01_01.getBaseCalendar(), newValue.getBaseCalendar());
-        Assert.assertEquals(calendar_01_01.getExcludedDates(), newValue.getExcludedDates());
-        Assert.assertEquals(calendar_01_01.getTimeZone(), newValue.getTimeZone());
-        Assert.assertEquals(calendar_01_01.getDescription(), newValue.getDescription());
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getExcludedDates(), newValue.getExcludedDates());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+    }
+
+    @Test
+    public void testAddAnnualCalendar() throws SchedulerException {
+        String calName = "annual";
+        AnnualCalendar wrapperCal = new AnnualCalendar();
+        java.util.Calendar cal1 = java.util.Calendar.getInstance();
+        cal1.set(2020, 9, 1);
+        wrapperCal.setDayExcluded(cal1, true);
+
+        AnnualCalendar quartzCal = new AnnualCalendar();
+        java.util.Calendar cal2 = java.util.Calendar.getInstance();
+        cal2.set(2020, 0, 1);
+        quartzCal.setDayExcluded(cal2, true);
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("2020年年度休假日");
+        scheduler.addCalendar(calName, quartzCal, true, false);
+        AnnualCalendar newValue = (AnnualCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+    }
+
+    @Test
+    public void testAddCronCalendar() throws Exception {
+        String calName = "cron";
+        CronCalendar wrapperCal = new CronCalendar("0 0 8 * * ?");
+        CronCalendar quartzCal = new CronCalendar(wrapperCal, "0 0 0/3 * * ?");
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("cron日历");
+        scheduler.addCalendar(calName, quartzCal, true, false);
+        CronCalendar newValue = (CronCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getCronExpression(), newValue.getCronExpression());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+    }
+
+    @Test
+    public void testAddDailyCalendar() throws Exception {
+        String calName = "daily";
+        DailyCalendar wrapperCal = new DailyCalendar(8, 0, 0, 0, 20, 0, 0, 0);
+        wrapperCal.setInvertTimeRange(true);
+        DailyCalendar quartzCal = new DailyCalendar(wrapperCal, 16, 0, 0, 0, 18, 0, 0, 0);
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("daily日历");
+        scheduler.addCalendar(calName, quartzCal, true, false);
+        DailyCalendar newValue = (DailyCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getInvertTimeRange(), newValue.getInvertTimeRange());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+    }
+
+    @Test
+    public void testAddMonthlyCalendar() throws Exception {
+        String calName = "monthly";
+        MonthlyCalendar wrapperCal = new MonthlyCalendar();
+        wrapperCal.setDayExcluded(1, true);
+        MonthlyCalendar quartzCal = new MonthlyCalendar(wrapperCal);
+        quartzCal.setDayExcluded(2, true);
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("monthly日历");
+        scheduler.addCalendar(calName, quartzCal, true, false);
+        MonthlyCalendar newValue = (MonthlyCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+    }
+
+    @Test
+    public void testAddWeeklyCalendar() throws Exception {
+        String calName = "weekly";
+        WeeklyCalendar wrapperCal = new WeeklyCalendar();
+        wrapperCal.setDayExcluded(1, true);
+        WeeklyCalendar quartzCal = new WeeklyCalendar(wrapperCal);
+        quartzCal.setDayExcluded(2, true);
+        quartzCal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        quartzCal.setDescription("weekly日历");
+        scheduler.addCalendar(calName, quartzCal, true, false);
+        WeeklyCalendar newValue = (WeeklyCalendar) scheduler.getCalendar(calName);
+
+        Assert.assertEquals(quartzCal.getBaseCalendar(), newValue.getBaseCalendar());
+        Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
+        Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
+        Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
     }
 }

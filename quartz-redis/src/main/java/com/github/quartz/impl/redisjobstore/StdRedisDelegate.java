@@ -15,7 +15,7 @@ import org.quartz.Calendar;
 import org.quartz.*;
 import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.calendar.BaseCalendar;
-import org.quartz.impl.calendar.HolidayCalendar;
+import org.quartz.impl.calendar.DailyCalendar;
 import org.quartz.impl.jdbcjobstore.FiredTriggerRecord;
 import org.quartz.impl.jdbcjobstore.NoSuchDelegateException;
 import org.quartz.impl.jdbcjobstore.TriggerStatus;
@@ -124,7 +124,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
                 .addMixIn(SimpleTrigger.class, TriggerMixIn.class)
                 .addMixIn(DailyTimeIntervalTrigger.class, DailyTimeIntervalTriggerMixIn.class)
                 .addMixIn(CalendarIntervalTrigger.class, TriggerMixIn.class)
-                .addMixIn(HolidayCalendar.class, HolidayCalendarMixIn.class)
+                .addMixIn(DailyCalendar.class, DailyCalendarMixIn.class)
                 .addMixIn(FiredTriggerRecord.class, FiredTriggerRecordMixIn.class)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
