@@ -7,6 +7,7 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.calendar.*;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
 
@@ -273,6 +274,9 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getExcludedDates(), newValue.getExcludedDates());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 
     @Test
@@ -296,6 +300,9 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 
     @Test
@@ -312,6 +319,9 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getCronExpression(), newValue.getCronExpression());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 
     @Test
@@ -329,6 +339,9 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getInvertTimeRange(), newValue.getInvertTimeRange());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 
     @Test
@@ -347,6 +360,9 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 
     @Test
@@ -365,5 +381,8 @@ public class RedisJobStoreTest {
         Assert.assertEquals(quartzCal.getDaysExcluded(), newValue.getDaysExcluded());
         Assert.assertEquals(quartzCal.getTimeZone(), newValue.getTimeZone());
         Assert.assertEquals(quartzCal.getDescription(), newValue.getDescription());
+
+        List<String> calendarNames = scheduler.getCalendarNames();
+        Assert.assertTrue(calendarNames.contains(calName));
     }
 }
