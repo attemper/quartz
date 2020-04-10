@@ -11,12 +11,10 @@ import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 import org.quartz.Calendar;
 import org.quartz.*;
 import org.quartz.impl.DefaultThreadExecutor;
-import org.quartz.impl.jdbcjobstore.Constants;
-import org.quartz.impl.jdbcjobstore.FiredTriggerRecord;
-import org.quartz.impl.jdbcjobstore.NoSuchDelegateException;
-import org.quartz.impl.jdbcjobstore.TriggerStatus;
+import org.quartz.impl.jdbcjobstore.*;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.impl.matchers.StringMatcher;
+import org.quartz.impl.triggers.SimpleTriggerImpl;
 import org.quartz.spi.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,17 +94,26 @@ public class RedisJobStore implements JobStore, RedisConstants {
 
     protected long clusterCheckinInterval = 7500L;
 
-    // private ClusterManager clusterManagementThread = null;
+    private ClusterManager clusterManagementThread = null;
 
-    // private MisfireHandler misfireHandler = null;
+    private MisfireHandler misfireHandler = null;
 
     private ClassLoadHelper classLoadHelper;
 
     private SchedulerSignaler schedSignaler;
 
+    protected int maxToRecoverAtATime = 20;
+
     private boolean acquireTriggersWithinLock = true;
 
     private long retryInterval = 15000L; // 15 secs
+
+    private boolean makeThreadsDaemons = false;
+
+    private boolean threadsInheritInitializersClassLoadContext = false;
+    private ClassLoader initializersLoader = null;
+
+    private boolean doubleCheckLockMisfireHandler = true;
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -263,6 +270,28 @@ public class RedisJobStore implements JobStore, RedisConstants {
     }
 
     /**
+     * <p>
+     * Get the maximum number of misfired triggers that the misfire handling
+     * thread will try to recover at one time (within one transaction).  The
+     * default is 20.
+     * </p>
+     */
+    public int getMaxMisfiresToHandleAtATime() {
+        return maxToRecoverAtATime;
+    }
+
+    /**
+     * <p>
+     * Set the maximum number of misfired triggers that the misfire handling
+     * thread will try to recover at one time (within one transaction).  The
+     * default is 20.
+     * </p>
+     */
+    public void setMaxMisfiresToHandleAtATime(int maxToRecoverAtATime) {
+        this.maxToRecoverAtATime = maxToRecoverAtATime;
+    }
+
+    /**
      * @return Returns the retryInterval.
      */
     public long getRetryInterval() {
@@ -345,6 +374,67 @@ public class RedisJobStore implements JobStore, RedisConstants {
     protected ClassLoadHelper getClassLoadHelper() {
         return classLoadHelper;
     }
+
+    /**
+     * Get whether the threads spawned by this JobStore should be
+     * marked as daemon.  Possible threads include the <code>MisfireHandler</code>
+     * and the <code>ClusterManager</code>.
+     *
+     * @see Thread#setDaemon(boolean)
+     */
+    public boolean getMakeThreadsDaemons() {
+        return makeThreadsDaemons;
+    }
+
+    /**
+     * Set whether the threads spawned by this JobStore should be
+     * marked as daemon.  Possible threads include the <code>MisfireHandler</code>
+     * and the <code>ClusterManager</code>.
+     *
+     * @see Thread#setDaemon(boolean)
+     */
+    public void setMakeThreadsDaemons(boolean makeThreadsDaemons) {
+        this.makeThreadsDaemons = makeThreadsDaemons;
+    }
+
+    /**
+     * Get whether to set the class load context of spawned threads to that
+     * of the initializing thread.
+     */
+    public boolean isThreadsInheritInitializersClassLoadContext() {
+        return threadsInheritInitializersClassLoadContext;
+    }
+
+    /**
+     * Set whether to set the class load context of spawned threads to that
+     * of the initializing thread.
+     */
+    public void setThreadsInheritInitializersClassLoadContext(
+            boolean threadsInheritInitializersClassLoadContext) {
+        this.threadsInheritInitializersClassLoadContext = threadsInheritInitializersClassLoadContext;
+    }
+
+    /**
+     * Get whether to check to see if there are Triggers that have misfired
+     * before actually acquiring the lock to recover them.  This should be
+     * set to false if the majority of the time, there are are misfired
+     * Triggers.
+     */
+    public boolean getDoubleCheckLockMisfireHandler() {
+        return doubleCheckLockMisfireHandler;
+    }
+
+    /**
+     * Set whether to check to see if there are Triggers that have misfired
+     * before actually acquiring the lock to recover them.  This should be
+     * set to false if the majority of the time, there are are misfired
+     * Triggers.
+     */
+    public void setDoubleCheckLockMisfireHandler(
+            boolean doubleCheckLockMisfireHandler) {
+        this.doubleCheckLockMisfireHandler = doubleCheckLockMisfireHandler;
+    }
+
     @Override
     public long getAcquireRetryDelay(int failureCount) {
         return 7500L;
@@ -478,8 +568,28 @@ public class RedisJobStore implements JobStore, RedisConstants {
      */
     @Override
     public void schedulerStarted() throws SchedulerException {
-        // TODO ldang264
+
+        if (isClustered()) {
+            clusterManagementThread = new ClusterManager();
+            if(initializersLoader != null)
+                clusterManagementThread.setContextClassLoader(initializersLoader);
+            clusterManagementThread.initialize();
+        } else {
+            try {
+                recoverJobs();
+            } catch (SchedulerException se) {
+                throw new SchedulerConfigException(
+                        "Failure occured during job recovery.", se);
+            }
+        }
+
+        misfireHandler = new MisfireHandler();
+        if(initializersLoader != null)
+            misfireHandler.setContextClassLoader(initializersLoader);
+        misfireHandler.initialize();
         schedulerRunning = true;
+
+        getLog().debug("JobStore background threads started (as scheduler was started).");
     }
 
     /**
@@ -507,7 +617,25 @@ public class RedisJobStore implements JobStore, RedisConstants {
      */
     @Override
     public void shutdown() {
+        shutdown = true;
         getDelegate().shutdown();
+
+        if (misfireHandler != null) {
+            misfireHandler.shutdown();
+            try {
+                misfireHandler.join();
+            } catch (InterruptedException ignore) {
+            }
+        }
+
+        if (clusterManagementThread != null) {
+            clusterManagementThread.shutdown();
+            try {
+                clusterManagementThread.join();
+            } catch (InterruptedException ignore) {
+            }
+        }
+
     }
 
     @Override
@@ -519,6 +647,71 @@ public class RedisJobStore implements JobStore, RedisConstants {
     // helper methods for subclasses
     //---------------------------------------------------------------------------
 
+    /**
+     * Recover any failed or misfired jobs and clean up the data store as
+     * appropriate.
+     *
+     * @throws JobPersistenceException if jobs could not be recovered
+     */
+    protected void recoverJobs() throws JobPersistenceException {
+        executeInLockWithValidator(
+                LOCK_TRIGGER_ACCESS,
+                new VoidCallback() {
+                    public void executeVoid() throws JobPersistenceException {
+                        try {
+                            // update inconsistent job states
+                            int rows = getDelegate().updateTriggerStatesFromOtherStates(
+                                    STATE_WAITING, STATE_ACQUIRED, STATE_BLOCKED);
+
+                            rows += getDelegate().updateTriggerStatesFromOtherStates(
+                                    STATE_PAUSED, STATE_PAUSED_BLOCKED, STATE_PAUSED_BLOCKED);
+
+                            getLog().info(
+                                    "Freed " + rows
+                                            + " triggers from 'acquired' / 'blocked' state.");
+
+                            // clean up misfired jobs
+                            recoverMisfiredJobs(true);
+
+                            // recover jobs marked for recovery that were not fully executed
+                            List<OperableTrigger> recoveringJobTriggers = getDelegate()
+                                    .selectTriggersForRecoveringJobs();
+                            getLog()
+                                    .info(
+                                            "Recovering "
+                                                    + recoveringJobTriggers.size()
+                                                    + " jobs that were in-progress at the time of the last shut-down.");
+
+                            for (OperableTrigger recoveringJobTrigger: recoveringJobTriggers) {
+                                if (jobExists(recoveringJobTrigger.getJobKey())) {
+                                    recoveringJobTrigger.computeFirstFireTime(null);
+                                    storeTrigger(recoveringJobTrigger, null, false,
+                                            STATE_WAITING, false, true);
+                                }
+                            }
+                            getLog().info("Recovery complete.");
+
+                            // remove lingering 'complete' triggers...
+                            List<TriggerKey> cts = getDelegate().selectTriggersInState(STATE_COMPLETE);
+                            for(TriggerKey ct: cts) {
+                                removeTriggerIntern(ct);
+                            }
+                            getLog().info(
+                                    "Removed " + cts.size() + " 'complete' triggers.");
+
+                            // clean up any fired trigger entries
+                            int n = getDelegate().deleteFiredTriggers();
+                            getLog().info("Removed " + n + " stale fired job entries.");
+                        } catch (JobPersistenceException e) {
+                            throw e;
+                        } catch (Exception e) {
+                            throw new JobPersistenceException("Couldn't recover jobs: "
+                                    + e.getMessage(), e);
+                        }
+                    }
+                }, null);
+    }
+
     protected long getMisfireTime() {
         long misfireTime = System.currentTimeMillis();
         if (getMisfireThreshold() > 0) {
@@ -526,6 +719,87 @@ public class RedisJobStore implements JobStore, RedisConstants {
         }
 
         return (misfireTime > 0) ? misfireTime : 0;
+    }
+
+    /**
+     * Helper class for returning the composite result of trying
+     * to recover misfired jobs.
+     */
+    protected static class RecoverMisfiredJobsResult {
+        public static final RecoverMisfiredJobsResult NO_OP =
+                new RecoverMisfiredJobsResult(false, 0, Long.MAX_VALUE);
+
+        private boolean _hasMoreMisfiredTriggers;
+        private int _processedMisfiredTriggerCount;
+        private long _earliestNewTime;
+
+        public RecoverMisfiredJobsResult(
+                boolean hasMoreMisfiredTriggers, int processedMisfiredTriggerCount, long earliestNewTime) {
+            _hasMoreMisfiredTriggers = hasMoreMisfiredTriggers;
+            _processedMisfiredTriggerCount = processedMisfiredTriggerCount;
+            _earliestNewTime = earliestNewTime;
+        }
+
+        public boolean hasMoreMisfiredTriggers() {
+            return _hasMoreMisfiredTriggers;
+        }
+        public int getProcessedMisfiredTriggerCount() {
+            return _processedMisfiredTriggerCount;
+        }
+        public long getEarliestNewTime() {
+            return _earliestNewTime;
+        }
+    }
+
+    protected RecoverMisfiredJobsResult recoverMisfiredJobs(boolean recovering)
+            throws JobPersistenceException {
+
+        // If recovering, we want to handle all of the misfired
+        // triggers right away.
+        int maxMisfiresToHandleAtATime =
+                (recovering) ? -1 : getMaxMisfiresToHandleAtATime();
+
+        List<TriggerKey> misfiredTriggers = new LinkedList<TriggerKey>();
+        long earliestNewTime = Long.MAX_VALUE;
+        // We must still look for the MISFIRED state in case triggers were left
+        // in this state when upgrading to this version that does not support it.
+        boolean hasMoreMisfiredTriggers =
+                getDelegate().hasMisfiredTriggersInState(
+                        STATE_WAITING, getMisfireTime(),
+                        maxMisfiresToHandleAtATime, misfiredTriggers);
+
+        if (hasMoreMisfiredTriggers) {
+            getLog().info(
+                    "Handling the first " + misfiredTriggers.size() +
+                            " triggers that missed their scheduled fire-time.  " +
+                            "More misfired triggers remain to be processed.");
+        } else if (misfiredTriggers.size() > 0) {
+            getLog().info(
+                    "Handling " + misfiredTriggers.size() +
+                            " trigger(s) that missed their scheduled fire-time.");
+        } else {
+            getLog().debug(
+                    "Found 0 triggers that missed their scheduled fire-time.");
+            return RecoverMisfiredJobsResult.NO_OP;
+        }
+
+        for (TriggerKey triggerKey: misfiredTriggers) {
+
+            OperableTrigger trig =
+                    retrieveTrigger(triggerKey);
+
+            if (trig == null) {
+                continue;
+            }
+
+            doUpdateOfMisfiredTrigger(trig, false, STATE_WAITING, recovering);
+
+            if(trig.getNextFireTime() != null && trig.getNextFireTime().getTime() < earliestNewTime)
+                earliestNewTime = trig.getNextFireTime().getTime();
+        }
+
+        return new RecoverMisfiredJobsResult(
+                hasMoreMisfiredTriggers, misfiredTriggers.size(), earliestNewTime);
     }
 
     protected boolean updateMisfiredTrigger(TriggerKey triggerKey, String newStateIfNotComplete, boolean forceState)
@@ -1145,10 +1419,6 @@ public class RedisJobStore implements JobStore, RedisConstants {
                 calendarCache.put(calName, cal); // lazy-cache...
             }
             return cal;
-        } catch (ClassNotFoundException e) {
-            throw new JobPersistenceException(
-                    "Couldn't retrieve calendar because a required class was not found: "
-                            + e.getMessage(), e);
         } catch (IOException e) {
             throw new JobPersistenceException(
                     "Couldn't retrieve calendar because the BLOB couldn't be deserialized: "
@@ -1372,8 +1642,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
      *
      * @see #resumeTriggerIntern(TriggerKey)
      */
-    protected void pauseTriggerIntern(TriggerKey triggerKey)
-            throws JobPersistenceException {
+    protected void pauseTriggerIntern(TriggerKey triggerKey) {
         String oldState = getDelegate().selectTriggerState(
                 triggerKey);
 
@@ -1630,7 +1899,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
 
         getDelegate().updateTriggerGroupStateFromOtherStates(
                 matcher, STATE_PAUSED, STATE_ACQUIRED,
-                STATE_WAITING, STATE_WAITING);
+                STATE_WAITING);
 
         getDelegate().updateTriggerGroupStateFromOtherState(
                 matcher, STATE_PAUSED_BLOCKED, STATE_BLOCKED);
@@ -1844,7 +2113,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
                 },
                 new Validator<List<OperableTrigger>>() {
                     public Boolean validate(List<OperableTrigger> result) throws JobPersistenceException {
-                        List<FiredTriggerRecord> acquired = getDelegate().selectInstancesFiredTriggerRecords();
+                        List<FiredTriggerRecord> acquired = getDelegate().selectInstancesFiredTriggerRecords(getInstanceId());
                         Set<String> fireInstanceIds = new HashSet<String>();
                         for (FiredTriggerRecord ft : acquired) {
                             fireInstanceIds.add(ft.getFireInstanceId());
@@ -2017,7 +2286,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
                 new Validator<List<TriggerFiredResult>>() {
                     @Override
                     public Boolean validate(List<TriggerFiredResult> result) throws JobPersistenceException {
-                        List<FiredTriggerRecord> acquired = getDelegate().selectInstancesFiredTriggerRecords();
+                        List<FiredTriggerRecord> acquired = getDelegate().selectInstancesFiredTriggerRecords(getInstanceId());
                         Set<String> executingTriggers = new HashSet<String>();
                         for (FiredTriggerRecord ft : acquired) {
                             if (STATE_EXECUTING.equals(ft.getFireInstanceState())) {
@@ -2158,13 +2427,8 @@ public class RedisJobStore implements JobStore, RedisConstants {
                             signalSchedulingChangeOnTxCompletion(0L);
                         }
                         if (jobDetail.isPersistJobDataAfterExecution()) {
-                            try {
-                                if (jobDetail.getJobDataMap().isDirty()) {
-                                    getDelegate().updateJobData(jobDetail);
-                                }
-                            } catch (IOException e) {
-                                throw new JobPersistenceException(
-                                        "Couldn't serialize job data: " + e.getMessage(), e);
+                            if (jobDetail.getJobDataMap().isDirty()) {
+                                getDelegate().updateJobData(jobDetail);
                             }
                         }
 
@@ -2180,6 +2444,37 @@ public class RedisJobStore implements JobStore, RedisConstants {
     //---------------------------------------------------------------------------
     // Management methods
     //---------------------------------------------------------------------------
+
+    protected RecoverMisfiredJobsResult doRecoverMisfires() throws JobPersistenceException {
+        boolean transOwner = false;
+        String lockValue = null;
+        try {
+            RecoverMisfiredJobsResult result = RecoverMisfiredJobsResult.NO_OP;
+
+            // Before we make the potentially expensive call to acquire the
+            // trigger lock, peek ahead to see if it is likely we would find
+            // misfired triggers requiring recovery.
+            int misfireCount = (getDoubleCheckLockMisfireHandler()) ?
+                    getDelegate().countMisfiredTriggersInState(STATE_WAITING, getMisfireTime()) :
+                    Integer.MAX_VALUE;
+
+            if (misfireCount == 0) {
+                getLog().debug(
+                        "Found 0 triggers that missed their scheduled fire-time.");
+            } else {
+                lockValue = UUID.randomUUID().toString();
+                transOwner = getDelegate().obtainLock(LOCK_TRIGGER_ACCESS, lockValue, timeout);
+                if (transOwner) {
+                    result = recoverMisfiredJobs(false);
+                }
+            }
+            return result;
+        } finally {
+            if (transOwner) {
+                getDelegate().releaseLock(LOCK_TRIGGER_ACCESS, lockValue);
+            }
+        }
+    }
 
     protected ThreadLocal<Long> sigChangeForTxCompletion = new ThreadLocal<Long>();
     protected void signalSchedulingChangeOnTxCompletion(long candidateNewNextFireTime) {
@@ -2205,6 +2500,334 @@ public class RedisJobStore implements JobStore, RedisConstants {
     //---------------------------------------------------------------------------
     // Cluster management methods
     //---------------------------------------------------------------------------
+
+    protected boolean firstCheckIn = true;
+
+    protected long lastCheckin = System.currentTimeMillis();
+
+    protected boolean doCheckin() throws JobPersistenceException {
+        boolean transOwner = false;
+        boolean transStateOwner = false;
+        boolean recovered = false;
+        String lockValue = null, stateLockValue = null;
+        try {
+            // Other than the first time, always checkin first to make sure there is
+            // work to be done before we acquire the lock (since that is expensive,
+            // and is almost never necessary).  This must be done in a separate
+            // transaction to prevent a deadlock under recovery conditions.
+            List<SchedulerStateRecord> failedRecords = null;
+            if (!firstCheckIn) {
+                failedRecords = clusterCheckIn();
+                //commitConnection(conn);
+            }
+
+            if (firstCheckIn || (failedRecords.size() > 0)) {
+                stateLockValue = UUID.randomUUID().toString();
+                transStateOwner = getDelegate().obtainLock(LOCK_STATE_ACCESS, stateLockValue, timeout);
+                if (transStateOwner) {
+
+                    // Now that we own the lock, make sure we still have work to do.
+                    // The first time through, we also need to make sure we update/create our state record
+                    failedRecords = (firstCheckIn) ? clusterCheckIn() : findFailedInstances();
+
+                    if (failedRecords.size() > 0) {
+                        lockValue = UUID.randomUUID().toString();
+                        transOwner = getDelegate().obtainLock(LOCK_TRIGGER_ACCESS, lockValue, timeout);
+                        //getLockHandler().obtainLock(conn, LOCK_JOB_ACCESS);
+                        if (transOwner) {
+                            clusterRecover(failedRecords);
+                            recovered = true;
+                        }
+                    }
+
+                }
+            }
+
+        } finally {
+            if (transOwner) {
+                getDelegate().releaseLock(LOCK_TRIGGER_ACCESS, lockValue);
+            }
+            if (transStateOwner) {
+                getDelegate().releaseLock(LOCK_TRIGGER_ACCESS, stateLockValue);
+            }
+        }
+
+        firstCheckIn = false;
+
+        return recovered;
+    }
+
+    /**
+     * Get a list of all scheduler instances in the cluster that may have failed.
+     * This includes this scheduler if it is checking in for the first time.
+     */
+    protected List<SchedulerStateRecord> findFailedInstances()
+            throws JobPersistenceException {
+        try {
+            List<SchedulerStateRecord> failedInstances = new LinkedList<SchedulerStateRecord>();
+            boolean foundThisScheduler = false;
+            long timeNow = System.currentTimeMillis();
+
+            List<SchedulerStateRecord> states = getDelegate().selectSchedulerStateRecords();
+
+            for(SchedulerStateRecord rec: states) {
+
+                // find own record...
+                if (rec.getSchedulerInstanceId().equals(getInstanceId())) {
+                    foundThisScheduler = true;
+                    if (firstCheckIn) {
+                        failedInstances.add(rec);
+                    }
+                } else {
+                    // find failed instances...
+                    if (calcFailedIfAfter(rec) < timeNow) {
+                        failedInstances.add(rec);
+                    }
+                }
+            }
+
+            // The first time through, also check for orphaned fired triggers.
+            if (firstCheckIn) {
+                failedInstances.addAll(findOrphanedFailedInstances(states));
+            }
+
+            // If not the first time but we didn't find our own instance, then
+            // Someone must have done recovery for us.
+            if ((!foundThisScheduler) && (!firstCheckIn)) {
+                // FUTURE_TODO: revisit when handle self-failed-out impl'ed (see FUTURE_TODO in clusterCheckIn() below)
+                getLog().warn(
+                        "This scheduler instance (" + getInstanceId() + ") is still " +
+                                "active but was recovered by another instance in the cluster.  " +
+                                "This may cause inconsistent behavior.");
+            }
+
+            return failedInstances;
+        } catch (Exception e) {
+            lastCheckin = System.currentTimeMillis();
+            throw new JobPersistenceException("Failure identifying failed instances when checking-in: "
+                    + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Create dummy <code>SchedulerStateRecord</code> objects for fired triggers
+     * that have no scheduler state record.  Checkin timestamp and interval are
+     * left as zero on these dummy <code>SchedulerStateRecord</code> objects.
+     *
+     * @param schedulerStateRecords List of all current <code>SchedulerStateRecords</code>
+     */
+    private List<SchedulerStateRecord> findOrphanedFailedInstances(
+            List<SchedulerStateRecord> schedulerStateRecords) {
+        List<SchedulerStateRecord> orphanedInstances = new ArrayList<SchedulerStateRecord>();
+
+        Set<String> allFiredTriggerInstanceNames = getDelegate().selectFiredTriggerInstanceNames();
+        if (!allFiredTriggerInstanceNames.isEmpty()) {
+            for (SchedulerStateRecord rec: schedulerStateRecords) {
+
+                allFiredTriggerInstanceNames.remove(rec.getSchedulerInstanceId());
+            }
+
+            for (String inst: allFiredTriggerInstanceNames) {
+
+                SchedulerStateRecord orphanedInstance = new SchedulerStateRecord();
+                orphanedInstance.setSchedulerInstanceId(inst);
+
+                orphanedInstances.add(orphanedInstance);
+
+                getLog().warn(
+                        "Found orphaned fired triggers for instance: " + orphanedInstance.getSchedulerInstanceId());
+            }
+        }
+
+        return orphanedInstances;
+    }
+
+    protected long calcFailedIfAfter(SchedulerStateRecord rec) {
+        return rec.getCheckinTimestamp() +
+                Math.max(rec.getCheckinInterval(),
+                        (System.currentTimeMillis() - lastCheckin)) +
+                7500L;
+    }
+
+    protected List<SchedulerStateRecord> clusterCheckIn()
+            throws JobPersistenceException {
+
+        List<SchedulerStateRecord> failedInstances = findFailedInstances();
+
+        try {
+            // FUTURE_TODO: handle self-failed-out
+
+            // check in...
+            lastCheckin = System.currentTimeMillis();
+            if(getDelegate().updateSchedulerState(getInstanceId(), lastCheckin) == 0) {
+                getDelegate().insertSchedulerState(getInstanceId(),
+                        lastCheckin, getClusterCheckinInterval());
+            }
+
+        } catch (Exception e) {
+            throw new JobPersistenceException("Failure updating scheduler state when checking-in: "
+                    + e.getMessage(), e);
+        }
+
+        return failedInstances;
+    }
+
+    protected void clusterRecover(List<SchedulerStateRecord> failedInstances)
+            throws JobPersistenceException {
+
+        if (failedInstances.size() > 0) {
+
+            long recoverIds = System.currentTimeMillis();
+
+            logWarnIfNonZero(failedInstances.size(),
+                    "ClusterManager: detected " + failedInstances.size()
+                            + " failed or restarted instances.");
+            try {
+                for (SchedulerStateRecord rec : failedInstances) {
+                    getLog().info(
+                            "ClusterManager: Scanning for instance \""
+                                    + rec.getSchedulerInstanceId()
+                                    + "\"'s failed in-progress jobs.");
+
+                    List<FiredTriggerRecord> firedTriggerRecs = getDelegate()
+                            .selectInstancesFiredTriggerRecords(rec.getSchedulerInstanceId());
+
+                    int acquiredCount = 0;
+                    int recoveredCount = 0;
+                    int otherCount = 0;
+
+                    Set<TriggerKey> triggerKeys = new HashSet<TriggerKey>();
+
+                    for (FiredTriggerRecord ftRec : firedTriggerRecs) {
+
+                        TriggerKey tKey = ftRec.getTriggerKey();
+                        JobKey jKey = ftRec.getJobKey();
+
+                        triggerKeys.add(tKey);
+
+                        // release blocked triggers..
+                        if (ftRec.getFireInstanceState().equals(STATE_BLOCKED)) {
+                            getDelegate()
+                                    .updateTriggerStatesForJobFromOtherState(
+                                            jKey,
+                                            STATE_WAITING, STATE_BLOCKED);
+                        } else if (ftRec.getFireInstanceState().equals(STATE_PAUSED_BLOCKED)) {
+                            getDelegate()
+                                    .updateTriggerStatesForJobFromOtherState(
+                                            jKey,
+                                            STATE_PAUSED, STATE_PAUSED_BLOCKED);
+                        }
+
+                        // release acquired triggers..
+                        if (ftRec.getFireInstanceState().equals(STATE_ACQUIRED)) {
+                            getDelegate().updateTriggerStateFromOtherState(
+                                    tKey, STATE_WAITING,
+                                    STATE_ACQUIRED);
+                            acquiredCount++;
+                        } else if (ftRec.isJobRequestsRecovery()) {
+                            // handle jobs marked for recovery that were not fully
+                            // executed..
+                            if (jobExists(jKey)) {
+                                @SuppressWarnings("deprecation")
+                                SimpleTriggerImpl rcvryTrig = new SimpleTriggerImpl(
+                                        "recover_"
+                                                + rec.getSchedulerInstanceId()
+                                                + "_"
+                                                + String.valueOf(recoverIds++),
+                                        Scheduler.DEFAULT_RECOVERY_GROUP,
+                                        new Date(ftRec.getScheduleTimestamp()));
+                                rcvryTrig.setJobName(jKey.getName());
+                                rcvryTrig.setJobGroup(jKey.getGroup());
+                                rcvryTrig.setMisfireInstruction(SimpleTrigger.MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY);
+                                rcvryTrig.setPriority(ftRec.getPriority());
+                                JobDataMap jd = getDelegate().selectTriggerJobDataMap(tKey.getName(), tKey.getGroup());
+                                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_NAME, tKey.getName());
+                                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_GROUP, tKey.getGroup());
+                                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_FIRETIME_IN_MILLISECONDS, String.valueOf(ftRec.getFireTimestamp()));
+                                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_SCHEDULED_FIRETIME_IN_MILLISECONDS, String.valueOf(ftRec.getScheduleTimestamp()));
+                                rcvryTrig.setJobDataMap(jd);
+
+                                rcvryTrig.computeFirstFireTime(null);
+                                storeTrigger(rcvryTrig, null, false,
+                                        STATE_WAITING, false, true);
+                                recoveredCount++;
+                            } else {
+                                getLog()
+                                        .warn(
+                                                "ClusterManager: failed job '"
+                                                        + jKey
+                                                        + "' no longer exists, cannot schedule recovery.");
+                                otherCount++;
+                            }
+                        } else {
+                            otherCount++;
+                        }
+
+                        // free up stateful job's triggers
+                        if (ftRec.isJobDisallowsConcurrentExecution()) {
+                            getDelegate()
+                                    .updateTriggerStatesForJobFromOtherState(
+                                            jKey,
+                                            STATE_WAITING, STATE_BLOCKED);
+                            getDelegate()
+                                    .updateTriggerStatesForJobFromOtherState(
+                                            jKey,
+                                            STATE_PAUSED, STATE_PAUSED_BLOCKED);
+                        }
+                    }
+
+                    getDelegate().deleteFiredTriggers(rec.getSchedulerInstanceId());
+
+                    // Check if any of the fired triggers we just deleted were the last fired trigger
+                    // records of a COMPLETE trigger.
+                    int completeCount = 0;
+                    for (TriggerKey triggerKey : triggerKeys) {
+
+                        if (getDelegate().selectTriggerState(triggerKey).
+                                equals(STATE_COMPLETE)) {
+                            List<FiredTriggerRecord> firedTriggers =
+                                    getDelegate().selectFiredTriggerRecords(triggerKey.getName(), triggerKey.getGroup());
+                            if (firedTriggers.isEmpty()) {
+
+                                if (removeTrigger(triggerKey)) {
+                                    completeCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    logWarnIfNonZero(acquiredCount,
+                            "ClusterManager: ......Freed " + acquiredCount
+                                    + " acquired trigger(s).");
+                    logWarnIfNonZero(completeCount,
+                            "ClusterManager: ......Deleted " + completeCount
+                                    + " complete triggers(s).");
+                    logWarnIfNonZero(recoveredCount,
+                            "ClusterManager: ......Scheduled " + recoveredCount
+                                    + " recoverable job(s) for recovery.");
+                    logWarnIfNonZero(otherCount,
+                            "ClusterManager: ......Cleaned-up " + otherCount
+                                    + " other failed job(s).");
+
+                    if (!rec.getSchedulerInstanceId().equals(getInstanceId())) {
+                        getDelegate().deleteSchedulerState(
+                                rec.getSchedulerInstanceId());
+                    }
+                }
+            } catch (Throwable e) {
+                throw new JobPersistenceException("Failure recovering jobs: "
+                        + e.getMessage(), e);
+            }
+        }
+    }
+
+    protected void logWarnIfNonZero(int val, String warning) {
+        if (val > 0) {
+            getLog().info(warning);
+        } else {
+            getLog().debug(warning);
+        }
+    }
 
     /**
      * Perform a redis operation while lock is acquired
@@ -2256,7 +2879,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
         try {
             if (lockName != null) {
                 lockValue = UUID.randomUUID().toString();
-                transOwner = getDelegate().lock(lockName, lockValue, timeout);
+                transOwner = getDelegate().obtainLock(lockName, lockValue, timeout);
             }
             T result = callback.execute();
             if (!transOwner && validator != null) {
@@ -2281,7 +2904,7 @@ public class RedisJobStore implements JobStore, RedisConstants {
                     + e.getMessage(), e);
         } finally {
             if (transOwner) {
-                getDelegate().release(lockName, lockValue);
+                getDelegate().releaseLock(lockName, lockValue);
             }
         }
         /*boolean transOwner = false;
@@ -2367,4 +2990,163 @@ public class RedisJobStore implements JobStore, RedisConstants {
         abstract void executeVoid() throws JobPersistenceException;
     }
 
+    /////////////////////////////////////////////////////////////////////////////
+    //
+    // ClusterManager Thread
+    //
+    /////////////////////////////////////////////////////////////////////////////
+
+    class ClusterManager extends Thread {
+
+        private volatile boolean shutdown = false;
+
+        private int numFails = 0;
+
+        ClusterManager() {
+            this.setPriority(Thread.NORM_PRIORITY + 2);
+            this.setName("QuartzScheduler_" + instanceName + "-" + instanceId + "_ClusterManager");
+            this.setDaemon(getMakeThreadsDaemons());
+        }
+
+        public void initialize() {
+            this.manage();
+
+            ThreadExecutor executor = getThreadExecutor();
+            executor.execute(ClusterManager.this);
+        }
+
+        public void shutdown() {
+            shutdown = true;
+            this.interrupt();
+        }
+
+        private boolean manage() {
+            boolean res = false;
+            try {
+
+                res = doCheckin();
+
+                numFails = 0;
+                getLog().debug("ClusterManager: Check-in complete.");
+            } catch (Exception e) {
+                if(numFails % 4 == 0) {
+                    getLog().error(
+                            "ClusterManager: Error managing cluster: "
+                                    + e.getMessage(), e);
+                }
+                numFails++;
+            }
+            return res;
+        }
+
+        @Override
+        public void run() {
+            while (!shutdown) {
+
+                if (!shutdown) {
+                    long timeToSleep = getClusterCheckinInterval();
+                    long transpiredTime = (System.currentTimeMillis() - lastCheckin);
+                    timeToSleep = timeToSleep - transpiredTime;
+                    if (timeToSleep <= 0) {
+                        timeToSleep = 100L;
+                    }
+
+                    if(numFails > 0) {
+                        timeToSleep = Math.max(getRetryInterval(), timeToSleep);
+                    }
+
+                    try {
+                        Thread.sleep(timeToSleep);
+                    } catch (Exception ignore) {
+                    }
+                }
+
+                if (!shutdown && this.manage()) {
+                    signalSchedulingChangeImmediately(0L);
+                }
+
+            }//while !shutdown
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+    //
+    // MisfireHandler Thread
+    //
+    /////////////////////////////////////////////////////////////////////////////
+
+    class MisfireHandler extends Thread {
+
+        private volatile boolean shutdown = false;
+
+        private int numFails = 0;
+
+
+        MisfireHandler() {
+            this.setName("QuartzScheduler_" + instanceName + "-" + instanceId + "_MisfireHandler");
+            this.setDaemon(getMakeThreadsDaemons());
+        }
+
+        public void initialize() {
+            ThreadExecutor executor = getThreadExecutor();
+            executor.execute(MisfireHandler.this);
+        }
+
+        public void shutdown() {
+            shutdown = true;
+            this.interrupt();
+        }
+
+        private RecoverMisfiredJobsResult manage() {
+            try {
+                getLog().debug("MisfireHandler: scanning for misfires...");
+
+                RecoverMisfiredJobsResult res = doRecoverMisfires();
+                numFails = 0;
+                return res;
+            } catch (Exception e) {
+                if(numFails % 4 == 0) {
+                    getLog().error(
+                            "MisfireHandler: Error handling misfires: "
+                                    + e.getMessage(), e);
+                }
+                numFails++;
+            }
+            return RecoverMisfiredJobsResult.NO_OP;
+        }
+
+        @Override
+        public void run() {
+
+            while (!shutdown) {
+
+                long sTime = System.currentTimeMillis();
+
+                RecoverMisfiredJobsResult recoverMisfiredJobsResult = manage();
+
+                if (recoverMisfiredJobsResult.getProcessedMisfiredTriggerCount() > 0) {
+                    signalSchedulingChangeImmediately(recoverMisfiredJobsResult.getEarliestNewTime());
+                }
+
+                if (!shutdown) {
+                    long timeToSleep = 50l;  // At least a short pause to help balance threads
+                    if (!recoverMisfiredJobsResult.hasMoreMisfiredTriggers()) {
+                        timeToSleep = getMisfireThreshold() - (System.currentTimeMillis() - sTime);
+                        if (timeToSleep <= 0) {
+                            timeToSleep = 50l;
+                        }
+
+                        if(numFails > 0) {
+                            timeToSleep = Math.max(getRetryInterval(), timeToSleep);
+                        }
+                    }
+
+                    try {
+                        Thread.sleep(timeToSleep);
+                    } catch (Exception ignore) {
+                    }
+                }//while !shutdown
+            }
+        }
+    }
 }

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.quartz.impl.redisjobstore.constant.FieldConstants;
 import com.github.quartz.impl.redisjobstore.constant.RedisConstants;
 import com.github.quartz.impl.redisjobstore.delegate.*;
+import com.github.quartz.impl.redisjobstore.ext.FiredTriggerRecordEntity;
 import com.github.quartz.impl.redisjobstore.mixin.*;
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulConnection;
@@ -18,8 +19,10 @@ import org.quartz.impl.calendar.BaseCalendar;
 import org.quartz.impl.calendar.DailyCalendar;
 import org.quartz.impl.jdbcjobstore.FiredTriggerRecord;
 import org.quartz.impl.jdbcjobstore.NoSuchDelegateException;
+import org.quartz.impl.jdbcjobstore.SchedulerStateRecord;
 import org.quartz.impl.jdbcjobstore.TriggerStatus;
 import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.impl.triggers.SimpleTriggerImpl;
 import org.quartz.spi.ClassLoadHelper;
 import org.quartz.spi.OperableTrigger;
 import org.slf4j.Logger;
@@ -125,7 +128,6 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
                 .addMixIn(DailyTimeIntervalTrigger.class, DailyTimeIntervalTriggerMixIn.class)
                 .addMixIn(CalendarIntervalTrigger.class, TriggerMixIn.class)
                 .addMixIn(DailyCalendar.class, DailyCalendarMixIn.class)
-                .addMixIn(FiredTriggerRecord.class, FiredTriggerRecordMixIn.class)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.setTypeFactory(objectMapper.getTypeFactory().withClassLoader(loadHelper.getClassLoader()));
@@ -195,7 +197,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @param timeout
      * @return
      */
-    public boolean lock(String key, String value, long timeout) {
+    public boolean obtainLock(String key, String value, long timeout) {
         return redisStringCommands.set(key, value, new SetArgs().px(timeout).nx()) != null;
     }
 
@@ -216,7 +218,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @param value
      * @return
      */
-    public boolean release(String key, String value) {
+    public boolean releaseLock(String key, String value) {
         return redisScriptingCommands.eval(UNLOCK_LUA, ScriptOutputType.BOOLEAN, new String[]{key}, value);
     }
 
@@ -296,17 +298,26 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         return redisSortedSetCommands.zrangebyscore(key, Range.create(0, includedEnd));
     }
 
+    protected List<String> zrangebyscoreExcluded(String key, long excludedEnd) {
+        return redisSortedSetCommands.zrangebyscore(key,
+                Range.from(Range.Boundary.excluding(0), Range.Boundary.excluding(excludedEnd)));
+    }
+
+    /*
     protected int zcard(String key) {
         return redisSortedSetCommands.zcard(key).intValue();
     }
+    */
 
     protected int zrem(String key, String... members) {
         return redisSortedSetCommands.zrem(key, members).intValue();
     }
 
+    /*
     protected List<ScoredValue<String>> zscan(String key, String match) {
         return redisSortedSetCommands.zscan(key, new ScanArgs().match(match)).getValues();
     }
+    */
     // sorted set end
 
     // hash(obj) start
@@ -330,9 +341,11 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         return redisHashCommands.hmget(key, fields);
     }
 
+    /*
     protected int hdel(String key, String... fields) {
         return redisHashCommands.hdel(key, fields).intValue();
     }
+    */
     // hash(obj) end
 
     // server start
@@ -340,9 +353,16 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         return redisServerCommands.flushdb();
     }
     // server end
+
     protected String keyOfJob(JobKey jobKey) {
         return MessageFormat.format(KEY_JOB, schedName, jobKey.getName(), jobKey.getGroup());
     }
+
+    /*
+    protected String keyOfJob(String jobName, String groupName) {
+        return MessageFormat.format(KEY_JOB, schedName, jobName, groupName);
+    }
+    */
 
     protected String keyOfJobs() {
         return MessageFormat.format(KEY_JOBS, schedName);
@@ -352,20 +372,32 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         return MessageFormat.format(KEY_TRIGGER, schedName, triggerKey.getName(), triggerKey.getGroup());
     }
 
+    protected String keyOfTrigger(String triggerName, String groupName) {
+        return MessageFormat.format(KEY_TRIGGER, schedName, triggerName, groupName);
+    }
+
     protected String keyOfTriggers() {
         return MessageFormat.format(KEY_TRIGGERS, schedName);
     }
 
-    protected String keyOfWaitTriggers() {
-        return MessageFormat.format(KEY_WAIT_TRIGGERS, schedName);
+    protected String keyOfWaitingStateTriggers() {
+        return MessageFormat.format(KEY_WAITING_STATE_TRIGGERS, schedName);
+    }
+
+    protected String keyOfOtherStateTriggers(String state) {
+        return MessageFormat.format(KEY_OTHER_STATE_TRIGGERS, state, schedName);
     }
 
     protected String keyOfJobTriggers(JobKey jobKey) {
         return MessageFormat.format(KEY_JOB_TRIGGERS, schedName, jobKey.getName(), jobKey.getGroup());
     }
 
-    protected String keyOfFiredJobs() {
-        return MessageFormat.format(KEY_FIRED_JOBS, schedName, instanceId);
+    protected String keyOfFiredInstances() {
+        return MessageFormat.format(KEY_FIRED_INSTANCES, schedName);
+    }
+
+    protected String keyOfFiredJobs(String instanceName) {
+        return MessageFormat.format(KEY_FIRED_JOBS, schedName, instanceName);
     }
 
     protected String keyOfFiredJob(String entryId) {
@@ -386,6 +418,14 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     protected String keyOfCalendarTriggers(String calendarName) {
         return MessageFormat.format(KEY_CALENDAR_TRIGGERS, schedName, calendarName);
+    }
+
+    protected String keyOfSchedulerStates() {
+        return MessageFormat.format(KEY_SCHEDULER_STATES, schedName);
+    }
+
+    protected String keyOfSchedulerState(String instanceId) {
+        return MessageFormat.format(KEY_SCHEDULER_STATE, schedName, instanceId);
     }
 
     protected String[] splitValue(String originValue) {
@@ -428,38 +468,85 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
 
     /**
      * <p>
+     * Insert the job detail record.
+     * </p>
+     *
+     * @param newState
+     *          the new state for the triggers
+     * @param oldState1
+     *          the first old state to update
+     * @param oldState2
+     *          the second old state to update
+     * @return number of rows updated
+     */
+    public int updateTriggerStatesFromOtherStates(String newState, String oldState1, String oldState2) {
+        Set<String> groupWithNames1 = smembers(keyOfOtherStateTriggers(oldState1));
+        Set<String> groupWithNames2 = smembers(keyOfOtherStateTriggers(oldState2));
+        if (groupWithNames1.size() == 0 && groupWithNames2.size() == 0) {
+            return 0;
+        }
+        String oldState1Key = keyOfOtherStateTriggers(oldState1);
+        String oldState2Key = keyOfOtherStateTriggers(oldState2);
+        if (groupWithNames1.size() > 0) {
+            srem(oldState1Key, groupWithNames1.toArray(new String[]{}));
+        }
+        if (groupWithNames2.size() > 0) {
+            srem(oldState2Key, groupWithNames2.toArray(new String[]{}));
+        }
+        if (STATE_WAITING.equals(newState)) {
+            Set<OperableTrigger> set = new HashSet<>(groupWithNames1.size() + groupWithNames2.size());
+            for (String groupWithName : groupWithNames1) {
+                String[] array = splitValue(groupWithName);
+                set.add(selectTrigger(new TriggerKey(array[0], array[1])));
+            }
+            for (String groupWithName : groupWithNames2) {
+                String[] array = splitValue(groupWithName);
+                set.add(selectTrigger(new TriggerKey(array[0], array[1])));
+            }
+            String waitingStateKey = keyOfWaitingStateTriggers();
+            for (OperableTrigger operableTrigger : set) {
+                if (operableTrigger.getNextFireTime() != null) {
+                    zadd(waitingStateKey,
+                            operableTrigger.getNextFireTime().getTime(),
+                            joinValue(operableTrigger.getKey()));
+                    hset(keyOfTrigger(operableTrigger.getKey()), FIELD_STATE, newState);
+                }
+            }
+        } else {
+            Set<String> set = new HashSet<>(groupWithNames1.size() + groupWithNames2.size());
+            set.addAll(groupWithNames1);
+            set.addAll(groupWithNames2);
+            String[] allGroupWithNames = set.toArray(new String[]{});
+            if (allGroupWithNames.length > 0) {
+                sadd(keyOfOtherStateTriggers(newState), allGroupWithNames);
+                for (String groupWithName : allGroupWithNames) {
+                    String[] array = splitValue(groupWithName);
+                    hset(keyOfTrigger(array[0], array[1]), FIELD_STATE, newState);
+                }
+            }
+        }
+        return groupWithNames1.size() + groupWithNames2.size();
+    }
+
+    /**
+     * <p>
      * Select all of the triggers in a given state.
      * </p>
      *
-     * @param conn
-     *          the DB Connection
      * @param state
      *          the state the triggers must be in
      * @return an array of trigger <code>Key</code> s
      */
-    /** TDOO ldang
-    public List<TriggerKey> selectTriggersInState(Connection conn, String state)
-            throws SQLException {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+    public List<TriggerKey> selectTriggersInState(String state) {
+        LinkedList<TriggerKey> list = new LinkedList<TriggerKey>();
 
-        try {
-            ps = conn.prepareStatement(rtp(SELECT_TRIGGERS_IN_STATE));
-            ps.setString(1, state);
-            rs = ps.executeQuery();
-
-            LinkedList<TriggerKey> list = new LinkedList<TriggerKey>();
-            while (rs.next()) {
-                list.add(triggerKey(rs.getString(1), rs.getString(2)));
-            }
-
-            return list;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
+        Set<String> groupWithNames = smembers(keyOfOtherStateTriggers(state));
+        for (String groupWithName : groupWithNames) {
+            String[] array = splitValue(groupWithName);
+            list.add(new TriggerKey(array[0], array[1]));
         }
+        return list;
     }
-     */
 
     /**
      * <p>
@@ -468,7 +555,6 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * be returned.
      * </p>
      *
-     * @param conn The DB Connection
      * @param count The most misfired triggers to return, negative for all
      * @param resultList Output parameter.  A List of
      *      <code>{@link org.quartz.utils.Key}</code> objects.  Must not be null.
@@ -476,36 +562,43 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return Whether there are more misfired triggers left to find beyond
      *         the given count.
      */
-    /** TDOO ldang
-    public boolean hasMisfiredTriggersInState(Connection conn, String state1,
-                                              long ts, int count, List<TriggerKey> resultList) throws SQLException {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+    public boolean hasMisfiredTriggersInState(String state1,
+                                              long ts, int count, List<TriggerKey> resultList) {
+        List<String> groupWithTriggerNames = zrangebyscoreExcluded(keyOfWaitingStateTriggers(), ts);
 
-        try {
-            ps = conn.prepareStatement(rtp(SELECT_HAS_MISFIRED_TRIGGERS_IN_STATE));
-            ps.setBigDecimal(1, new BigDecimal(String.valueOf(ts)));
-            ps.setString(2, state1);
-            rs = ps.executeQuery();
-
-            boolean hasReachedLimit = false;
-            while (rs.next() && (hasReachedLimit == false)) {
-                if (resultList.size() == count) {
-                    hasReachedLimit = true;
-                } else {
-                    String triggerName = rs.getString(COL_TRIGGER_NAME);
-                    String groupName = rs.getString(COL_TRIGGER_GROUP);
-                    resultList.add(triggerKey(triggerName, groupName));
+        List<Map<String, String>> list = new ArrayList<>(groupWithTriggerNames.size());
+        for (int i = 0; i < groupWithTriggerNames.size(); i++) {
+            String[] array = splitValue(groupWithTriggerNames.get(i));
+            List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(array[0], array[1]), FIELD_MISFIRE_INSTRUCTION, FIELD_STATE, FIELD_NEXT_FIRE_TIME, FIELD_PRIORITY);
+            if (!"-1".equals(keyValues.get(0).getValue()) && state1.equals(keyValues.get(1).getValue())) {
+                Map<String, String> map = new HashMap<>(6);
+                for (KeyValue<String, String> keyValue : keyValues) {
+                    map.put(keyValue.getKey(), keyValue.getValue());
                 }
+                map.put(FIELD_TRIGGER_NAME, array[0]);
+                map.put(FIELD_TRIGGER_GROUP, array[1]);
+                list.add(map);
             }
-
-            return hasReachedLimit;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
         }
+        list.sort(Comparator.comparing((Map<String, String> o) -> o.get(FIELD_NEXT_FIRE_TIME))
+                .thenComparing(o -> o.get(FIELD_PRIORITY)).reversed());
+
+        Iterator<Map<String, String>> it = list.iterator();
+
+        boolean hasReachedLimit = false;
+        while (it.hasNext() && !hasReachedLimit) {
+            if (resultList.size() == count) {
+                hasReachedLimit = true;
+            } else {
+                Map<String, String> map = it.next();
+                String triggerName = map.get(FIELD_TRIGGER_NAME);
+                String groupName = map.get(FIELD_TRIGGER_GROUP);
+                resultList.add(new TriggerKey(triggerName, groupName));
+            }
+        }
+
+        return hasReachedLimit;
     }
-     */
 
     /**
      * <p>
@@ -513,31 +606,20 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * misfired - according to the given timestamp.
      * </p>
      *
-     * @param conn the DB Connection
      */
-    /** TDOO ldang
-    public int countMisfiredTriggersInState(
-            Connection conn, String state1, long ts) throws SQLException {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+    public int countMisfiredTriggersInState(String state1, long ts) {
+        int count = 0;
+        List<String> groupWithTriggerNames = zrangebyscoreExcluded(keyOfWaitingStateTriggers(), ts);
 
-        try {
-            ps = conn.prepareStatement(rtp(COUNT_MISFIRED_TRIGGERS_IN_STATE));
-            ps.setBigDecimal(1, new BigDecimal(String.valueOf(ts)));
-            ps.setString(2, state1);
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return rs.getInt(1);
+        for (int i = 0; i < groupWithTriggerNames.size(); i++) {
+            String[] array = splitValue(groupWithTriggerNames.get(i));
+            List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(array[0], array[1]), FIELD_MISFIRE_INSTRUCTION, FIELD_STATE);
+            if (!"-1".equals(keyValues.get(0).getValue()) && state1.equals(keyValues.get(1).getValue())) {
+                count++;
             }
-
-            throw new SQLException("No misfired trigger count returned.");
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
         }
+        return count;
     }
-     */
 
     /**
      * <p>
@@ -556,95 +638,75 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * returned triggers to ensure that they are fired.
      * </p>
      *
-     * @param conn
-     *          the DB Connection
      * @return an array of <code>{@link org.quartz.Trigger}</code> objects
      */
-    /** TDOO ldang
-    public List<OperableTrigger> selectTriggersForRecoveringJobs(Connection conn)
-            throws SQLException, IOException, ClassNotFoundException {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+    public List<OperableTrigger> selectTriggersForRecoveringJobs() {
+        long dumId = System.currentTimeMillis();
+        LinkedList<OperableTrigger> list = new LinkedList<OperableTrigger>();
 
-        try {
-            ps = conn
-                    .prepareStatement(rtp(SELECT_INSTANCES_RECOVERABLE_FIRED_TRIGGERS));
-            ps.setString(1, instanceId);
-            setBoolean(ps, 2, true);
-            rs = ps.executeQuery();
-
-            long dumId = System.currentTimeMillis();
-            LinkedList<OperableTrigger> list = new LinkedList<OperableTrigger>();
-            while (rs.next()) {
-                String jobName = rs.getString(COL_JOB_NAME);
-                String jobGroup = rs.getString(COL_JOB_GROUP);
-                String trigName = rs.getString(COL_TRIGGER_NAME);
-                String trigGroup = rs.getString(COL_TRIGGER_GROUP);
-                long firedTime = rs.getLong(COL_FIRED_TIME);
-                long scheduledTime = rs.getLong(COL_SCHED_TIME);
-                int priority = rs.getInt(COL_PRIORITY);
-                @SuppressWarnings("deprecation")
-                SimpleTriggerImpl rcvryTrig = new SimpleTriggerImpl("recover_"
-                        + instanceId + "_" + String.valueOf(dumId++),
-                        Scheduler.DEFAULT_RECOVERY_GROUP, new Date(scheduledTime));
+        Set<String> entryIds = smembers(keyOfFiredJobs(instanceId));
+        for (String entryId : entryIds) {
+            Map<String, String> firedJobMap = hgetall(keyOfFiredJob(entryId));
+            String jobName = firedJobMap.get(FIELD_JOB_NAME);
+            String groupName = firedJobMap.get(FIELD_JOB_GROUP);
+            String priority = firedJobMap.get(FIELD_PRIORITY);
+            String requestsRecover = firedJobMap.get(FIELD_REQUESTS_RECOVERY);
+            if (Boolean.parseBoolean(requestsRecover)) {
+                long firedTime = Long.parseLong(firedJobMap.get(FIELD_FIRED_TIME));
+                long scheduledTime = Long.parseLong(firedJobMap.get(FIELD_SCHED_TIME));
+                SimpleTriggerImpl rcvryTrig = (SimpleTriggerImpl) TriggerBuilder.newTrigger()
+                        .withIdentity("recover_"  + instanceId + "_" + dumId++,
+                        Scheduler.DEFAULT_RECOVERY_GROUP).startAt(new Date(scheduledTime)).build();
                 rcvryTrig.setJobName(jobName);
-                rcvryTrig.setJobGroup(jobGroup);
-                rcvryTrig.setPriority(priority);
+                rcvryTrig.setJobGroup(groupName);
+                rcvryTrig.setPriority(Integer.parseInt(priority));
                 rcvryTrig.setMisfireInstruction(SimpleTrigger.MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY);
 
-                JobDataMap jd = selectTriggerJobDataMap(conn, trigName, trigGroup);
-                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_NAME, trigName);
-                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_GROUP, trigGroup);
+                String triggerName = firedJobMap.get(FIELD_TRIGGER_NAME);
+                JobDataMap jd = selectTriggerJobDataMap(triggerName, groupName);
+                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_NAME, triggerName);
+                jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_GROUP, groupName);
                 jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_FIRETIME_IN_MILLISECONDS, String.valueOf(firedTime));
                 jd.put(Scheduler.FAILED_JOB_ORIGINAL_TRIGGER_SCHEDULED_FIRETIME_IN_MILLISECONDS, String.valueOf(scheduledTime));
                 rcvryTrig.setJobDataMap(jd);
 
                 list.add(rcvryTrig);
             }
-            return list;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
         }
+        return list;
     }
-    */
 
     /**
      * <p>
      * Delete all fired triggers.
      * </p>
      *
-     * @param conn
-     *          the DB Connection
      * @return the number of rows deleted
      */
-    /** TDOO ldang
-    public int deleteFiredTriggers(Connection conn) throws SQLException {
-        PreparedStatement ps = null;
-
-        try {
-            ps = conn.prepareStatement(rtp(DELETE_FIRED_TRIGGERS));
-
-            return ps.executeUpdate();
-        } finally {
-            closeStatement(ps);
+    public int deleteFiredTriggers() {
+        String keyOfFiredInstances = keyOfFiredInstances();
+        Set<String> instanceNames = smembers(keyOfFiredInstances);
+        for (String instanceName : instanceNames) {
+            String keyOfFiredJobs = keyOfFiredJobs(instanceName);
+            Set<String> entryIds = smembers(keyOfFiredJobs);
+            for (String entryId : entryIds) {
+                del(keyOfFiredJob(entryId));
+            }
+            del(keyOfFiredJobs);
         }
+
+        return del(keyOfFiredInstances);
     }
 
-    public int deleteFiredTriggers(Connection conn, String theInstanceId)
-            throws SQLException {
-        PreparedStatement ps = null;
-
-        try {
-            ps = conn.prepareStatement(rtp(DELETE_INSTANCES_FIRED_TRIGGERS));
-            ps.setString(1, theInstanceId);
-
-            return ps.executeUpdate();
-        } finally {
-            closeStatement(ps);
+    public int deleteFiredTriggers(String theInstanceId) {
+        String keyOfFiredJobs = keyOfFiredJobs(theInstanceId);
+        Set<String> entryIds = smembers(keyOfFiredJobs);
+        for (String entryId : entryIds) {
+            del(keyOfFiredJob(entryId));
         }
+        del(keyOfFiredJobs);
+        return srem(keyOfFiredInstances(), theInstanceId);
     }
-    */
 
     /**
      * Clear (delete!) all scheduling data - all {@link Job}s, {@link Trigger}s
@@ -744,8 +806,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @param job
      *          the job to update
      */
-    public void updateJobData(JobDetail job)
-            throws IOException {
+    public void updateJobData(JobDetail job) {
         JobDataMap jobDataMap = job.getJobDataMap();
         String s = objectMapper.convertValue(jobDataMap, String.class);
         hset(keyOfJob(job.getKey()), FIELD_JOB_DATA_MAP, s);
@@ -865,12 +926,10 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *
      * @param trigger
      *          the trigger to insert
-     * @return the number of rows inserted
      */
     public void updateTrigger(OperableTrigger trigger, String state, JobDetail job) {
         Map<String, String> triggerMap = objectMapper
                 .convertValue(trigger, new TypeReference<HashMap<String, String>>() {});
-
         TriggerTypeDelegate tDel = findTriggerTypeDelegate(trigger);
         String type;
         if(tDel != null) {
@@ -880,81 +939,35 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         }
         triggerMap.put(FIELD_STATE, state);
         triggerMap.put(FIELD_TYPE, type);
+        long nextFireTime = -1;
+        if (trigger.getNextFireTime() != null) {
+            nextFireTime = trigger.getNextFireTime().getTime();
+        }
+        triggerMap.put(FIELD_NEXT_FIRE_TIME, String.valueOf(nextFireTime));
         long prevFireTime = -1;
         if (trigger.getPreviousFireTime() != null) {
             prevFireTime = trigger.getPreviousFireTime().getTime();
         }
         triggerMap.put(FIELD_PREV_FIRE_TIME, String.valueOf(prevFireTime));
-        /*
-        triggerMap.put(COL_START_TIME, String.valueOf(trigger
-                .getStartTime().getTime()));
-        long endTime = 0;
-        if (trigger.getEndTime() != null) {
-            endTime = trigger.getEndTime().getTime();
-        }
-        triggerMap.put(COL_END_TIME, String.valueOf(endTime));*/
-        hmset(keyOfTrigger(trigger.getKey()), triggerMap);
-        sadd(keyOfJobTriggers(job.getKey()), joinValue(trigger.getKey()));
-        if (STATE_WAITING.equals(state) && trigger.getNextFireTime() != null) {
-            zadd(keyOfWaitTriggers(),
-                    trigger.getNextFireTime().getTime(),
-                    joinValue(trigger.getKey()));
+        String oldState = hget(keyOfTrigger(trigger.getKey()), FIELD_STATE);
+        hmset(keyOfTrigger(trigger.getKey()), triggerMap); // add trigger
+        sadd(keyOfJobTriggers(job.getKey()), joinValue(trigger.getKey())); // add job trigger
+
+        String joinValue = joinValue(trigger.getKey());
+        if (STATE_WAITING.equals(oldState)) {
+            zrem(keyOfWaitingStateTriggers(), joinValue); // remove waiting state of trigger
         } else {
-            zrem(keyOfWaitTriggers(), joinValue(trigger.getKey()));
+            srem(keyOfOtherStateTriggers(oldState), joinValue); // remove old state of trigger
         }
-        /*
-        int insertResult = 0;
-
-        try {
-            ps = conn.prepareStatement(rtp(INSERT_TRIGGER));
-            ps.setString(1, trigger.getKey().getName());
-            ps.setString(2, trigger.getKey().getGroup());
-            ps.setString(3, trigger.getJobKey().getName());
-            ps.setString(4, trigger.getJobKey().getGroup());
-            ps.setString(5, trigger.getDescription());
-            if(trigger.getNextFireTime() != null)
-                ps.setBigDecimal(6, new BigDecimal(String.valueOf(trigger
-                        .getNextFireTime().getTime())));
-            else
-                ps.setBigDecimal(6, null);
-            long prevFireTime = -1;
-            if (trigger.getPreviousFireTime() != null) {
-                prevFireTime = trigger.getPreviousFireTime().getTime();
+        if (STATE_WAITING.equals(state)) {
+            if (trigger.getNextFireTime() != null) {
+                zadd(keyOfWaitingStateTriggers(),
+                        trigger.getNextFireTime().getTime(),
+                        joinValue(trigger.getKey()));
             }
-            ps.setBigDecimal(7, new BigDecimal(String.valueOf(prevFireTime)));
-            ps.setString(8, state);
-
-            TriggerPersistenceDelegate tDel = findTriggerPersistenceDelegate(trigger);
-
-            String type = TTYPE_BLOB;
-            if(tDel != null)
-                type = tDel.getHandledTriggerTypeDiscriminator();
-            ps.setString(9, type);
-
-            ps.setBigDecimal(10, new BigDecimal(String.valueOf(trigger
-                    .getStartTime().getTime())));
-            long endTime = 0;
-            if (trigger.getEndTime() != null) {
-                endTime = trigger.getEndTime().getTime();
-            }
-            ps.setBigDecimal(11, new BigDecimal(String.valueOf(endTime)));
-            ps.setString(12, trigger.getCalendarName());
-            ps.setInt(13, trigger.getMisfireInstruction());
-            setBytes(ps, 14, baos);
-            ps.setInt(15, trigger.getPriority());
-
-            insertResult = ps.executeUpdate();
-
-            if(tDel == null)
-                insertBlobTrigger(conn, trigger);
-            else
-                tDel.insertExtendedTriggerProperties(conn, trigger, state, jobDetail);
-
-        } finally {
-            closeStatement(ps);
+        } else {
+            sadd(keyOfOtherStateTriggers(state), joinValue);
         }
-
-        return insertResult;*/
     }
 
     /**
@@ -978,37 +991,31 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *          the new state for the trigger
      * @return the number of rows updated
      */
-    public boolean updateTriggerState(TriggerKey triggerKey,
+    public void updateTriggerState(TriggerKey triggerKey,
                                   String state) {
-        return hset(keyOfTrigger(triggerKey), FIELD_STATE, state);
-    }
+        String key = keyOfTrigger(triggerKey);
+        List<KeyValue<String, String>> keyValues = hmget(key, FIELD_STATE, FIELD_NEXT_FIRE_TIME);
+        if (keyValues.size() > 0) {
+            hset(key, FIELD_STATE, state);
 
-    /**
-     * <p>
-     * Update the given trigger to the given new state, if it is one of the
-     * given old states.
-     * </p>
-     *
-     * @param newState
-     *          the new state for the trigger
-     * @param oldState1
-     *          one of the old state the trigger must be in
-     * @param oldState2
-     *          one of the old state the trigger must be in
-     * @param oldState3
-     *          one of the old state the trigger must be in
-     * @return int the number of rows updated
-     */
-    protected int updateTriggerStateFromOtherStates(TriggerKey triggerKey, String newState, String oldState1,
-                                                 String oldState2, String oldState3) {
-        String keyOfTrigger = keyOfTrigger(triggerKey);
-        String triggerState = hget(keyOfTrigger, FIELD_STATE);
-        if (triggerState != null && (triggerState.equals(oldState1) ||
-                triggerState.equals(oldState2) || triggerState.equals(oldState3))) {
-            hset(keyOfTrigger, FIELD_STATE, newState);
-            return 1;
+            String oldState = keyValues.get(0).getValue();
+            String groupWithName = joinValue(triggerKey);
+            // remove old state from states
+            if (STATE_WAITING.equals(oldState)) {
+                zrem(keyOfWaitingStateTriggers(), groupWithName);
+            } else {
+                srem(keyOfOtherStateTriggers(oldState), groupWithName);
+            }
+            // add new state to states
+            if (STATE_WAITING.equals(state)) {
+                String theNextFireTime = keyValues.get(1).getValue();
+                if (theNextFireTime != null && !"-1".equals(theNextFireTime)) {
+                    zadd(keyOfWaitingStateTriggers(), Long.parseLong(theNextFireTime), groupWithName);
+                }
+            } else {
+                sadd(keyOfOtherStateTriggers(state), groupWithName);
+            }
         }
-        return 0;
     }
 
     /**
@@ -1025,15 +1032,44 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *          one of the old state the trigger must be in
      * @param oldState2
      *          one of the old state the trigger must be in
-     * @param oldState3
-     *          one of the old state the trigger must be in
      * @return int the number of rows updated
      */
-    public void updateTriggerGroupStateFromOtherStates(GroupMatcher<TriggerKey> matcher, String newState, String oldState1,
-                                                      String oldState2, String oldState3) {
+    public void updateTriggerGroupStateFromOtherStates(GroupMatcher<TriggerKey> matcher, String newState,
+                                                       String oldState1, String oldState2) {
         Set<TriggerKey> triggerKeys = selectTriggersInGroup(matcher);
         for (TriggerKey triggerKey : triggerKeys) {
-            updateTriggerStateFromOtherStates(triggerKey, newState, oldState1, oldState2, oldState3);
+            String keyOfTrigger = keyOfTrigger(triggerKey);
+            List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger, FIELD_STATE, FIELD_NEXT_FIRE_TIME);
+            if (keyValues.size() > 0) {
+                String theState = keyValues.get(0).getValue();
+                if (theState != null && (theState.equals(oldState1) || theState.equals(oldState2))) {
+                    hset(keyOfTrigger, FIELD_STATE, newState); // change trigger state from old to new
+
+                    String groupWithName = joinValue(triggerKey);
+                    // remove old state1 from states
+                    if (STATE_WAITING.equals(oldState1)) {
+                        zrem(keyOfWaitingStateTriggers(), groupWithName);
+                    } else {
+                        srem(keyOfOtherStateTriggers(oldState1), groupWithName);
+                    }
+                    // remove old state2 from states
+                    if (STATE_WAITING.equals(oldState2)) {
+                        zrem(keyOfWaitingStateTriggers(), groupWithName);
+                    } else {
+                        srem(keyOfOtherStateTriggers(oldState2), groupWithName);
+                    }
+                    // add new state to states
+                    if (STATE_WAITING.equals(newState)) {
+                        String theNextFireTime = keyValues.get(1).getValue();
+                        if (theNextFireTime != null && !"-1".equals(theNextFireTime)) {
+                            zadd(keyOfWaitingStateTriggers(), Long.parseLong(theNextFireTime), groupWithName);
+                        }
+                    } else {
+                        sadd(keyOfOtherStateTriggers(newState), groupWithName);
+                    }
+
+                }
+            }
         }
     }
 
@@ -1051,10 +1087,31 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public int updateTriggerStateFromOtherState(TriggerKey triggerKey, String newState, String oldState) {
         String keyOfTrigger = keyOfTrigger(triggerKey);
-        String triggerState = hget(keyOfTrigger, FIELD_STATE);
-        if (triggerState != null && triggerState.equals(oldState)) {
-            hset(keyOfTrigger, FIELD_STATE, newState);
-            return 1;
+        List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger, FIELD_STATE, FIELD_NEXT_FIRE_TIME);
+        if (keyValues.size() > 0) {
+            String theState = keyValues.get(0).getValue();
+            if (theState != null && theState.equals(oldState)) {
+                hset(keyOfTrigger, FIELD_STATE, newState); // change trigger state from old to new
+
+                String groupWithName = joinValue(triggerKey);
+                // remove old state from states
+                if (STATE_WAITING.equals(oldState)) {
+                    zrem(keyOfWaitingStateTriggers(), groupWithName);
+                } else {
+                    srem(keyOfOtherStateTriggers(oldState), groupWithName);
+                }
+                // add new state to states
+                if (STATE_WAITING.equals(newState)) {
+                    String theNextFireTime = keyValues.get(1).getValue();
+                    if (theNextFireTime != null && !"-1".equals(theNextFireTime)) {
+                        zadd(keyOfWaitingStateTriggers(), Long.parseLong(theNextFireTime), groupWithName);
+                    }
+                } else {
+                    sadd(keyOfOtherStateTriggers(newState), groupWithName);
+                }
+
+                return 1;
+            }
         }
         return 0;
     }
@@ -1115,10 +1172,15 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public long deleteTrigger(TriggerKey triggerKey) {
         String value = joinValue(triggerKey);
-        List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_JOB_NAME, FIELD_JOB_GROUP);
+        List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_JOB_NAME, FIELD_JOB_GROUP, FIELD_STATE);
         srem(keyOfJobTriggers(new JobKey(keyValues.get(0).getValue(), keyValues.get(1).getValue())), value);  // remove trigger in job-triggers
         del(keyOfTrigger(triggerKey)); // remove trigger
-        zrem(keyOfWaitTriggers(), value); // remove waiting triggers
+        String state = keyValues.get(2).getValue();
+        if (STATE_WAITING.equals(state)) {
+            zrem(keyOfWaitingStateTriggers(), value); // remove waiting state triggers
+        } else {
+            srem(keyOfOtherStateTriggers(state), value); // remove other state triggers
+        }
         return srem(keyOfTriggers(), value); // remove trigger in triggers
     }
 
@@ -1172,7 +1234,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return an array of <code>(@link org.quartz.Trigger)</code> objects
      *         associated with a given job.
      */
-    public List<OperableTrigger> selectTriggersForJob(JobKey jobKey) throws JobPersistenceException {
+    public List<OperableTrigger> selectTriggersForJob(JobKey jobKey) {
 
         LinkedList<OperableTrigger> trigList = new LinkedList<OperableTrigger>();
 
@@ -1188,8 +1250,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         return trigList;
     }
 
-    public List<OperableTrigger> selectTriggersForCalendar(String calName)
-            throws JobPersistenceException {
+    public List<OperableTrigger> selectTriggersForCalendar(String calName) {
 
         LinkedList<OperableTrigger> trigList = new LinkedList<OperableTrigger>();
         Set<String> triggerGroupWithNames = smembers(keyOfCalendarTriggers(calName));
@@ -1208,123 +1269,34 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @return the <code>{@link org.quartz.Trigger}</code> object
      * @throws JobPersistenceException
      */
-    public OperableTrigger selectTrigger(TriggerKey triggerKey) throws JobPersistenceException {
+    public OperableTrigger selectTrigger(TriggerKey triggerKey) {
         Map<String, String> triggerMap = hgetall(keyOfTrigger(triggerKey));
         String type = triggerMap.get(FIELD_TYPE);
         TriggerTypeDelegate tDel = findTriggerTypeDelegate(type);
-        if(tDel == null)
-            throw new JobPersistenceException("No TriggerPersistenceDelegate for trigger discriminator type: " + type);
         Class<? extends OperableTrigger> triggerClass = tDel.getTriggerClass();
         OperableTrigger operableTrigger = objectMapper.convertValue(triggerMap, triggerClass);
         return operableTrigger;
-        /**
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+    }
 
-        try {
-            OperableTrigger trigger = null;
-
-            ps = conn.prepareStatement(rtp(SELECT_TRIGGER));
-            ps.setString(1, triggerKey.getName());
-            ps.setString(2, triggerKey.getGroup());
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                String jobName = rs.getString(COL_JOB_NAME);
-                String jobGroup = rs.getString(COL_JOB_GROUP);
-                String description = rs.getString(COL_DESCRIPTION);
-                long nextFireTime = rs.getLong(COL_NEXT_FIRE_TIME);
-                long prevFireTime = rs.getLong(COL_PREV_FIRE_TIME);
-                String triggerType = rs.getString(COL_TRIGGER_TYPE);
-                long startTime = rs.getLong(COL_START_TIME);
-                long endTime = rs.getLong(COL_END_TIME);
-                String calendarName = rs.getString(COL_CALENDAR_NAME);
-                int misFireInstr = rs.getInt(COL_MISFIRE_INSTRUCTION);
-                int priority = rs.getInt(COL_PRIORITY);
-
-                Map<?, ?> map = null;
-                if (canUseProperties()) {
-                    map = getMapFromProperties(rs);
-                } else {
-                    map = (Map<?, ?>) getObjectFromBlob(rs, COL_JOB_DATAMAP);
-                }
-
-                Date nft = null;
-                if (nextFireTime > 0) {
-                    nft = new Date(nextFireTime);
-                }
-
-                Date pft = null;
-                if (prevFireTime > 0) {
-                    pft = new Date(prevFireTime);
-                }
-                Date startTimeD = new Date(startTime);
-                Date endTimeD = null;
-                if (endTime > 0) {
-                    endTimeD = new Date(endTime);
-                }
-
-                if (triggerType.equals(TTYPE_BLOB)) {
-                    rs.close(); rs = null;
-                    ps.close(); ps = null;
-
-                    ps = conn.prepareStatement(rtp(SELECT_BLOB_TRIGGER));
-                    ps.setString(1, triggerKey.getName());
-                    ps.setString(2, triggerKey.getGroup());
-                    rs = ps.executeQuery();
-
-                    if (rs.next()) {
-                        trigger = (OperableTrigger) getObjectFromBlob(rs, COL_BLOB);
-                    }
-                }
-                else {
-                    TriggerPersistenceDelegate tDel = findTriggerPersistenceDelegate(triggerType);
-
-                    if(tDel == null)
-                        throw new JobPersistenceException("No TriggerPersistenceDelegate for trigger discriminator type: " + triggerType);
-
-                    TriggerPersistenceDelegate.TriggerPropertyBundle triggerProps = null;
-                    try {
-                        triggerProps = tDel.loadExtendedTriggerProperties(conn, triggerKey);
-                    } catch (IllegalStateException isex) {
-                        if (isTriggerStillPresent(ps)) {
-                            throw isex;
-                        } else {
-                            // QTZ-386 Trigger has been deleted
-                            return null;
-                        }
-                    }
-
-                    TriggerBuilder<?> tb = newTrigger()
-                            .withDescription(description)
-                            .withPriority(priority)
-                            .startAt(startTimeD)
-                            .endAt(endTimeD)
-                            .withIdentity(triggerKey)
-                            .modifiedByCalendar(calendarName)
-                            .withSchedule(triggerProps.getScheduleBuilder())
-                            .forJob(jobKey(jobName, jobGroup));
-
-                    if (null != map) {
-                        tb.usingJobData(new JobDataMap(map));
-                    }
-
-                    trigger = (OperableTrigger) tb.build();
-
-                    trigger.setMisfireInstruction(misFireInstr);
-                    trigger.setNextFireTime(nft);
-                    trigger.setPreviousFireTime(pft);
-
-                    setTriggerStateProperties(trigger, triggerProps);
-                }
-            }
-
-            return trigger;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
-        }*/
-
+    /**
+     * <p>
+     * Select a trigger's JobDataMap.
+     * </p>
+     *
+     * @param triggerName
+     *          the name of the trigger
+     * @param groupName
+     *          the group containing the trigger
+     * @return the <code>{@link org.quartz.JobDataMap}</code> of the Trigger,
+     * never null, but possibly empty.
+     */
+    public JobDataMap selectTriggerJobDataMap(String triggerName,
+                                              String groupName) {
+        String jobDataMapString = hget(keyOfTrigger(triggerName, groupName), FIELD_JOB_DATA_MAP);
+        if (jobDataMapString != null) {
+            return objectMapper.convertValue(jobDataMapString, JobDataMap.class);
+        }
+        return new JobDataMap();
     }
 
     /**
@@ -1504,37 +1476,13 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      * @param calendarName
      *          the name of the calendar
      * @return the Calendar
-     * @throws ClassNotFoundException
-     *           if a class found during deserialization cannot be found be
-     *           found
      * @throws IOException
      *           if there were problems deserializing the calendar
      */
     public Calendar selectCalendar(String calendarName)
-            throws ClassNotFoundException, IOException {
+            throws IOException {
         String calendarInfo = get(keyOfCalendar(calendarName));
         return objectMapper.readValue(calendarInfo, BaseCalendar.class);
-        /*PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            String selCal = rtp(SELECT_CALENDAR);
-            ps = conn.prepareStatement(selCal);
-            ps.setString(1, calendarName);
-            rs = ps.executeQuery();
-
-            Calendar cal = null;
-            if (rs.next()) {
-                cal = (Calendar) getObjectFromBlob(rs, COL_CALENDAR);
-            }
-            if (null == cal) {
-                logger.warn("Couldn't find calendar with name '" + calendarName
-                        + "'.");
-            }
-            return cal;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
-        }*/
     }
 
     /**
@@ -1611,9 +1559,9 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
         // Set max rows to retrieve
         if (maxCount < 1)
             maxCount = 1; // we want at least one trigger back.
-        List<String> groupWithTriggerNames = zrangebyscore(keyOfWaitTriggers(), noLaterThan);
+        List<String> groupWithTriggerNames = zrangebyscore(keyOfWaitingStateTriggers(), noLaterThan);
         for (int i = 0; i < groupWithTriggerNames.size(); i++) {
-            if (i < maxCount) {
+            if (nextTriggers.size() < maxCount) {
                 String[] array = splitValue(groupWithTriggerNames.get(i));
                 TriggerKey triggerKey = new TriggerKey(array[0], array[1]);
                 List<KeyValue<String, String>> keyValues = hmget(keyOfTrigger(triggerKey), FIELD_MISFIRE_INSTRUCTION, FIELD_NEXT_FIRE_TIME);
@@ -1623,6 +1571,7 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
                 }
             }
         }
+
         return nextTriggers;
     }
 
@@ -1639,7 +1588,8 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
     public void insertFiredTrigger(OperableTrigger trigger,
                                   String state) {
         updateFiredTrigger(trigger, state);
-        sadd(keyOfFiredJobs(), trigger.getFireInstanceId());
+        sadd(keyOfFiredJobs(instanceId), trigger.getFireInstanceId());
+        sadd(keyOfFiredInstances(), instanceId);
     }
 
     /**
@@ -1676,61 +1626,35 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *
      * @return a List of FiredTriggerRecord objects.
      */
-    /** TODO ldang264 doCheckin
     public List<FiredTriggerRecord> selectFiredTriggerRecords(String triggerName, String groupName) {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            List<FiredTriggerRecord> lst = new LinkedList<FiredTriggerRecord>();
-
-            if (triggerName != null) {
-                ps = conn.prepareStatement(rtp(SELECT_FIRED_TRIGGER));
-                ps.setString(1, triggerName);
-                ps.setString(2, groupName);
-            } else {
-                ps = conn.prepareStatement(rtp(SELECT_FIRED_TRIGGER_GROUP));
-                ps.setString(1, groupName);
-            }
-            rs = ps.executeQuery();
-
-            while (rs.next()) {
-                FiredTriggerRecord rec = new FiredTriggerRecord();
-
-                rec.setFireInstanceId(rs.getString(COL_ENTRY_ID));
-                rec.setFireInstanceState(rs.getString(COL_ENTRY_STATE));
-                rec.setFireTimestamp(rs.getLong(COL_FIRED_TIME));
-                rec.setScheduleTimestamp(rs.getLong(COL_SCHED_TIME));
-                rec.setPriority(rs.getInt(COL_PRIORITY));
-                rec.setSchedulerInstanceId(rs.getString(COL_INSTANCE_NAME));
-                rec.setTriggerKey(triggerKey(rs.getString(COL_TRIGGER_NAME), rs
-                        .getString(COL_TRIGGER_GROUP)));
-                if (!rec.getFireInstanceState().equals(STATE_ACQUIRED)) {
-                    rec.setJobDisallowsConcurrentExecution(getBoolean(rs, COL_IS_NONCONCURRENT));
-                    rec.setJobRequestsRecovery(rs
-                            .getBoolean(COL_REQUESTS_RECOVERY));
-                    rec.setJobKey(jobKey(rs.getString(COL_JOB_NAME), rs
-                            .getString(COL_JOB_GROUP)));
-                }
-                lst.add(rec);
-            }
-
-            return lst;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
-        }
-    }
-     */
-
-    public List<FiredTriggerRecord> selectInstancesFiredTriggerRecords() {
 
         List<FiredTriggerRecord> lst = new LinkedList<FiredTriggerRecord>();
 
-        Set<String> entryIds = smembers(keyOfFiredJobs());
+        Set<String> instanceNames = smembers(keyOfFiredInstances());
+        for (String instanceName : instanceNames) {
+            Set<String> entryIds = smembers(keyOfFiredJobs(instanceName));
+            for (String entryId : entryIds) {
+                Map<String, String> firedJobMap = hgetall(keyOfFiredJob(entryId));
+                FiredTriggerRecordEntity recordEntity = objectMapper.convertValue(firedJobMap, FiredTriggerRecordEntity.class);
+                if (groupName.equals(recordEntity.getTriggerGroup())
+                        && (triggerName == null || triggerName.equals(recordEntity.getTriggerName()))) {
+                    lst.add(recordEntity.trans());
+                }
+            }
+        }
+
+        return lst;
+    }
+
+    public List<FiredTriggerRecord> selectInstancesFiredTriggerRecords(String instanceName) {
+
+        List<FiredTriggerRecord> lst = new LinkedList<FiredTriggerRecord>();
+
+        Set<String> entryIds = smembers(keyOfFiredJobs(instanceName));
         for (String entryId : entryIds) {
             Map<String, String> firedJobMap = hgetall(keyOfFiredJob(entryId));
-            FiredTriggerRecord record = objectMapper.convertValue(firedJobMap, FiredTriggerRecord.class);
-            lst.add(record);
+            FiredTriggerRecordEntity recordEntity = objectMapper.convertValue(firedJobMap, FiredTriggerRecordEntity.class);
+            lst.add(recordEntity.trans());
         }
 
         return lst;
@@ -1748,27 +1672,9 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      *
      * @return a Set of String objects.
      */
-    /** TODO ldang264 doCheckin
-    public Set<String> selectFiredTriggerInstanceNames(Connection conn) {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            Set<String> instanceNames = new HashSet<String>();
-
-            ps = conn.prepareStatement(rtp(SELECT_FIRED_TRIGGER_INSTANCE_NAMES));
-            rs = ps.executeQuery();
-
-            while (rs.next()) {
-                instanceNames.add(rs.getString(COL_INSTANCE_NAME));
-            }
-
-            return instanceNames;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
-        }
+    public Set<String> selectFiredTriggerInstanceNames() {
+        return smembers(keyOfFiredInstances());
     }
-    */
 
     /**
      * <p>
@@ -1781,83 +1687,47 @@ public class StdRedisDelegate implements RedisConstants, FieldConstants {
      */
     public void deleteFiredTrigger(String entryId) {
         del(keyOfFiredJob(entryId));
-        srem(keyOfFiredJobs(), entryId);
+        Set<String> firedInstanceNames = smembers(keyOfFiredInstances());
+        for (String instanceName : firedInstanceNames) {
+            srem(keyOfFiredJobs(instanceName), entryId);  // if exits
+        }
     }
 
-    /* TODO ldang264 doCheckin
     public int insertSchedulerState(String theInstanceId,
                                     long checkInTime, long interval) {
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(rtp(INSERT_SCHEDULER_STATE));
-            ps.setString(1, theInstanceId);
-            ps.setLong(2, checkInTime);
-            ps.setLong(3, interval);
-
-            return ps.executeUpdate();
-        } finally {
-            closeStatement(ps);
-        }
+        long res = sadd(keyOfSchedulerStates(), theInstanceId);
+        Map<String, String> map = new HashMap<>();
+        map.put(FIELD_LAST_CHECKIN_TIME, String.valueOf(checkInTime));
+        map.put(FIELD_CHECKIN_INTERVAL, String.valueOf(interval));
+        hmset(keyOfSchedulerState(theInstanceId), map);
+        return (int) res;
     }
 
     public int deleteSchedulerState(String theInstanceId) {
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(rtp(DELETE_SCHEDULER_STATE));
-            ps.setString(1, theInstanceId);
-
-            return ps.executeUpdate();
-        } finally {
-            closeStatement(ps);
-        }
+        srem(keyOfSchedulerStates(), theInstanceId);
+        return del(keyOfSchedulerState(theInstanceId));
     }
 
     public int updateSchedulerState(String theInstanceId, long checkInTime) {
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(rtp(UPDATE_SCHEDULER_STATE));
-            ps.setLong(1, checkInTime);
-            ps.setString(2, theInstanceId);
-
-            return ps.executeUpdate();
-        } finally {
-            closeStatement(ps);
-        }
+        return hset(keyOfSchedulerState(theInstanceId), FIELD_LAST_CHECKIN_TIME, String.valueOf(checkInTime)) ? 1 : 0;
     }
 
-    public List<SchedulerStateRecord> selectSchedulerStateRecords(String theInstanceId) {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            List<SchedulerStateRecord> lst = new LinkedList<SchedulerStateRecord>();
+    public List<SchedulerStateRecord> selectSchedulerStateRecords() {
+        List<SchedulerStateRecord> lst = new LinkedList<SchedulerStateRecord>();
 
-            if (theInstanceId != null) {
-                ps = conn.prepareStatement(rtp(SELECT_SCHEDULER_STATE));
-                ps.setString(1, theInstanceId);
-            } else {
-                ps = conn.prepareStatement(rtp(SELECT_SCHEDULER_STATES));
-            }
-            rs = ps.executeQuery();
+        Set<String> instanceIds = smembers(keyOfSchedulerStates());
+        for (String instanceId : instanceIds) {
+            SchedulerStateRecord rec = new SchedulerStateRecord();
+            Map<String, String> map = hgetall(keyOfSchedulerState(instanceId));
 
-            while (rs.next()) {
-                SchedulerStateRecord rec = new SchedulerStateRecord();
+            rec.setSchedulerInstanceId(instanceId);
+            rec.setCheckinTimestamp(Long.parseLong(map.get(FIELD_LAST_CHECKIN_TIME)));
+            rec.setCheckinInterval(Long.parseLong(map.get(FIELD_CHECKIN_INTERVAL)));
 
-                rec.setSchedulerInstanceId(rs.getString(COL_INSTANCE_NAME));
-                rec.setCheckinTimestamp(rs.getLong(COL_LAST_CHECKIN_TIME));
-                rec.setCheckinInterval(rs.getLong(COL_CHECKIN_INTERVAL));
-
-                lst.add(rec);
-            }
-
-            return lst;
-        } finally {
-            closeResultSet(rs);
-            closeStatement(ps);
+            lst.add(rec);
         }
-
+        return lst;
     }
-*/
-
 
     //---------------------------------------------------------------------------
     // other

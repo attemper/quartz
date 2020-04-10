@@ -47,4 +47,7 @@ public interface FieldConstants {
 
     String FIELD_SCHED_TIME = "schedTime";
 
+    String FIELD_LAST_CHECKIN_TIME = "lastCheckinTime";
+
+    String FIELD_CHECKIN_INTERVAL = "checkinInterval";
 }
