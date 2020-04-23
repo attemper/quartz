@@ -5,7 +5,7 @@
 
   <groupId>com.github.attemper</groupId>
   <artifactId>quartz</artifactId>
-  <version>2.3.2.2-SNAPSHOT</version>
+  <version>2.3.2.3-SNAPSHOT</version>
   <name>quartz</name>
   <packaging>pom</packaging>
 
@@ -21,7 +21,6 @@
     <module>quartz-jobs</module>
     <module>quartz-plugins</module>
     <module>quartz-examples</module>
-    <module>quartz-redis</module>
   </modules>
 
   <properties>
