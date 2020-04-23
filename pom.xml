@@ -21,7 +21,6 @@
     <module>quartz-jobs</module>
     <module>quartz-plugins</module>
     <module>quartz-examples</module>
-    <module>quartz-redis</module>
   </modules>
 
   <properties>
