@@ -39,7 +39,7 @@
 
     <commons-io.version>2.7</commons-io.version>
 
-    <derby-version>10.8.2.2</derby-version>
+    <derby-version>10.17.1.0</derby-version>
     <javaee-api.version>6.0-5</javaee-api.version>
     <hamcrest-library.version>1.2</hamcrest-library.version>
     <mockito-all.version>1.9.5</mockito-all.version>
